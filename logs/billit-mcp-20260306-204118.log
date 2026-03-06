@@ -34,3 +34,24 @@
 [20:43:35] 
 ▶️  Task [03] BillitMcp — Parties tools
 [20:43:35]    🤖 Invoking Claude CLI...
+      Klaar. 4 party tools aangemaakt:
+      
+      | Tool | Methode | Wat |
+      |------|---------|-----|
+      | `billit_list_parties` | GET /v1/parties | Lijst met filter op type, fullTextSearch, paginatie |
+      | `billit_get_party` | GET /v1/parties/{id} | Volledige party details |
+      | `billit_create_party` | POST /v1/parties | Nieuwe klant/leverancier aanmaken |
+      | `billit_update_party` | PATCH /v1/parties/{id} | Party gegevens bijwerken |
+      
+      Alles volgt hetzelfde patroon als orders.ts. TypeScript compileert zonder errors.
+[20:44:55]    🔍 Verifying: npm run build
+
+> @tailormade/billit-mcp@1.0.0 build
+> tsc
+
+
+[20:44:56]    ✅ Verify passed.
+[20:44:56]    ✅ Done: BillitMcp — Parties tools
+[20:44:57] 
+▶️  Task [04] BillitMcp — Products tools
+[20:44:57]    🤖 Invoking Claude CLI...

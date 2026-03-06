@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { BillitClient } from "./api/client.js";
 import { registerOrderTools } from "./tools/orders.js";
 import { registerPartyTools } from "./tools/parties.js";
+import { registerProductTools } from "./tools/products.js";
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -24,6 +25,7 @@ async function main(): Promise<void> {
 
   registerOrderTools(server, client);
   registerPartyTools(server, client);
+  registerProductTools(server, client);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
