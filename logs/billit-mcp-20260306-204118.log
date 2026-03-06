@@ -169,3 +169,39 @@
 [20:52:24] 
 ▶️  Task [10] BillitMcp — Coverage check script
 [20:52:24]    🤖 Invoking Claude CLI...
+      Done. Samenvatting:
+      
+      - **`scripts/check-coverage.ts`** aangemaakt — parsed INDEX.md endpoints (55) en scant tool registraties (39)
+      - **Checks**: non-empty descriptions + `.describe()` op alle params (multi-line aware)
+      - **`npm run check-coverage`** toegevoegd aan package.json
+      - Alle checks slagen: 39 tools, alle params hebben `.describe()`
+[20:53:43]    🔍 Verifying: npm run check-coverage
+
+> @tailormade/billit-mcp@1.0.0 check-coverage
+> tsx scripts/check-coverage.ts
+
+
+=== Billit MCP Coverage ===
+
+Endpoints in INDEX.md: 55
+Tools registered:      39
+
+  documents.ts: billit_list_documents, billit_get_document, billit_upload_document, billit_download_file
+  financial.ts: billit_list_financial_transactions, billit_import_financial_transactions, billit_list_reports, billit_get_report, billit_get_account_info, billit_search_company, billit_list_typecodes, billit_list_accountant_feeds, billit_register_accountant_feed, billit_confirm_accountant_feed, billit_download_accountant_file
+  orders.ts: billit_list_orders, billit_get_order, billit_create_order, billit_update_order, billit_confirm_order, billit_delete_order, billit_register_payment, billit_send_order
+  parties.ts: billit_list_parties, billit_get_party, billit_create_party, billit_update_party
+  peppol.ts: billit_peppol_list_inbox, billit_peppol_confirm_inbox, billit_peppol_refuse_inbox, billit_peppol_send_order, billit_peppol_lookup_participant, billit_peppol_register, billit_peppol_unregister
+  products.ts: billit_list_products, billit_get_product, billit_create_product
+  toprocess.ts: billit_submit_for_processing, billit_cancel_processing
+
+✅ All tools have non-empty descriptions
+✅ All params have .describe()
+
+✅ Coverage check passed (39 tools covering 55 endpoints)
+
+
+[20:53:44]    ✅ Verify passed.
+[20:53:44]    ✅ Done: BillitMcp — Coverage check script
+[20:53:45] 
+▶️  Task [11] BillitMcp — CLAUDE.md
+[20:53:45]    🤖 Invoking Claude CLI...
