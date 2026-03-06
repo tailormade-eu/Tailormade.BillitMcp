@@ -37,3 +37,8 @@ When implemented:
 | No file streaming | `billit_download_file` returns base64 — large files may hit token limits |
 | Async processing | `billit_submit_for_processing` is async — no webhook to know when done |
 | Feed rate limit | `billit_list_accountant_feeds` max once per minute |
+| Financial transaction `Info` field | Visible in Billit UI but not returned by the API |
+| Financial transaction `Paid` checkbox | UI-only flag — not exposed via API, cannot be read or set |
+| No update endpoint for transactions | No PATCH/PUT on `/v1/financialTransactions/{id}` — read-only via API |
+| Incomplete bank history | Pre-PSD2 data only available if manually imported via CodaBox; gap between import periods is not visible |
+| `fullTextSearch` limited scope | Does not search all fields (e.g. `Description` text in old CodaBox transactions) |
