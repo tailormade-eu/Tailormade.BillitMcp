@@ -75,3 +75,29 @@
 [20:45:53] 
 ▶️  Task [05] BillitMcp — Peppol tools
 [20:45:53]    🤖 Invoking Claude CLI...
+      Klaar. Samenvatting:
+      
+      **Task 05 — Peppol tools** afgerond:
+      
+      | Tool | Methode | Endpoint |
+      |------|---------|----------|
+      | `billit_peppol_list_inbox` | GET | `/v1/peppol/inbox` |
+      | `billit_peppol_confirm_inbox` | POST | `/v1/peppol/inbox/{id}/confirm` |
+      | `billit_peppol_refuse_inbox` | POST | `/v1/peppol/inbox/{id}/refuse` |
+      | `billit_peppol_send_order` | POST | `/v1/peppol/sendOrder` |
+      | `billit_peppol_lookup_participant` | GET | `/v1/peppol/participantInformation/{VAT}` |
+      | `billit_peppol_register` | POST | `/v1/peppol/participants` |
+      | `billit_peppol_unregister` | DELETE | `/v1/peppol/participants` |
+      
+      Build OK, geregistreerd in `index.ts`, PROGRESS.md bijgewerkt.
+[20:47:25]    🔍 Verifying: npm run build
+
+> @tailormade/billit-mcp@1.0.0 build
+> tsc
+
+
+[20:47:26]    ✅ Verify passed.
+[20:47:27]    ✅ Done: BillitMcp — Peppol tools
+[20:47:28] 
+▶️  Task [06] BillitMcp — Documents & Files tools
+[20:47:28]    🤖 Invoking Claude CLI...
