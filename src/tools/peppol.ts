@@ -6,7 +6,7 @@ function respond(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-const companyId = z.number().optional()
+const companyId = z.coerce.number().optional()
   .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
 
 export function registerPeppolTools(server: McpServer, client: BillitClient) {
@@ -15,8 +15,8 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
     "List incoming Peppol messages (e-invoices received from suppliers via the Peppol network). Returns inbox items with inboxItemId, sender, document type, and date. Supports OData $orderby. Next steps: billit_peppol_confirm_inbox to accept, billit_peppol_refuse_inbox to reject.",
     {
       orderby: z.string().optional().describe("OData $orderby expression. Example: 'ReceivedDate desc'"),
-      top: z.number().optional().describe("Max results per page (max: 120)"),
-      skip: z.number().optional().describe("Items to skip for pagination (default: 0)"),
+      top: z.coerce.number().optional().describe("Max results per page (max: 120)"),
+      skip: z.coerce.number().optional().describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
     async ({ orderby, top, skip, company_id }) => {
@@ -60,7 +60,7 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
     "billit_peppol_send_order",
     "Send a specific order directly via the Peppol e-invoicing network. Use billit_peppol_lookup_participant first to verify the customer is a Peppol participant. Prerequisites: order must be confirmed (ApprovalStatus=approved).\n\nCRITICAL: The customer must be registered on Peppol before you can send. Use billit_peppol_lookup_participant with their VAT/CBE number first. If they are not on Peppol, use billit_send_order (which falls back to email) instead.",
     {
-      order_id: z.number().describe("Numeric order ID to send via Peppol"),
+      order_id: z.coerce.number().describe("Numeric order ID to send via Peppol"),
       company_id: companyId,
     },
     async ({ order_id, company_id }) => {

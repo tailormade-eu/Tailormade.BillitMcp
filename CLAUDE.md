@@ -36,6 +36,22 @@
 | Accountant feed polling | Max once per minute — always confirm items after download |
 | billit_create_product | Acts as upsert if same `reference` exists |
 
+## Zod type coercion
+
+All numeric and boolean params use `z.coerce.number()` / `z.union([z.boolean(), z.string().transform(...)])`.
+
+**Why:** MCP clients (incl. Claude) sometimes pass numbers/booleans as strings (`"208029"`, `"false"`). Zod strict types reject these. Coercion silently converts them.
+
+**Pattern:**
+```typescript
+// Numbers — coerce accepts "123" and 123
+z.coerce.number().optional()
+
+// Booleans — coerce.boolean() is WRONG ("false" → true)
+// Use union instead:
+const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
+```
+
 ## Development
 
 ### Build

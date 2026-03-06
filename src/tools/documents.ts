@@ -6,7 +6,7 @@ function respond(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-const companyId = z.number().optional()
+const companyId = z.coerce.number().optional()
   .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
 
 export function registerDocumentTools(server: McpServer, client: BillitClient) {
@@ -17,8 +17,8 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
       filter: z.string().optional().describe("OData $filter expression. Examples: \"OrderID eq 12345\", \"FileName eq 'invoice.pdf'\""),
       orderby: z.string().optional().describe("OData $orderby expression. Examples: 'CreationDate desc', 'FileName asc'"),
       search: z.string().optional().describe("Full-text search on document name or content. Sent as 'fullTextSearch' query param."),
-      top: z.number().optional().describe("Max results per page (max: 120)"),
-      skip: z.number().optional().describe("Items to skip for pagination (default: 0)"),
+      top: z.coerce.number().optional().describe("Max results per page (max: 120)"),
+      skip: z.coerce.number().optional().describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
     async ({ filter, orderby, search, top, skip, company_id }) => {
@@ -38,7 +38,7 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
     "billit_get_document",
     "Get metadata and content of a specific document. Returns document details including a fileID (UUID) that can be used with billit_download_file to get the actual file content.",
     {
-      document_id: z.number().describe("Numeric document ID from billit_list_documents result"),
+      document_id: z.coerce.number().describe("Numeric document ID from billit_list_documents result"),
       company_id: companyId,
     },
     async ({ document_id, company_id }) => {

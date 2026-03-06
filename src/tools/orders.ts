@@ -6,8 +6,10 @@ function respond(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-const companyId = z.number().optional()
+const companyId = z.coerce.number().optional()
   .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
+
+const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
 
 export function registerOrderTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -22,15 +24,14 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
         .describe("ISO date string — only orders modified after this date. Used in OData filter: LastModified ge datetime'YYYY-MM-DDTHH:MM:SS'"),
       approval_status: z.enum(["none", "approved", "rejected"]).optional()
         .describe("Filter by approval status: 'none' (pending), 'approved', 'rejected'"),
-      paid: z.boolean().optional()
-        .describe("Filter by payment status: true = paid, false = unpaid"),
+      paid: coerceBool.describe("Filter by payment status: true = paid, false = unpaid"),
       search: z.string().optional()
         .describe("Full-text search across order fields (order number, customer name, reference). Sent as separate 'fullTextSearch' query param, NOT in OData filter."),
       orderby: z.string().optional()
         .describe("OData $orderby expression. Examples: 'OrderDate desc', 'TotalAmountInclVat desc', 'LastModified desc'"),
-      top: z.number().optional()
+      top: z.coerce.number().optional()
         .describe("Max results per page (max: 120)"),
-      skip: z.number().optional()
+      skip: z.coerce.number().optional()
         .describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
@@ -57,7 +58,7 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
     "billit_get_order",
     "Get full details of an order including all order lines, customer/supplier info, totals (excl/incl VAT), payment status, and booking entries. Use this after billit_list_orders to get line items. Next steps: billit_update_order (mark paid/sent), billit_register_payment, billit_confirm_order, billit_send_order.",
     {
-      order_id: z.number().describe("Numeric order ID from billit_list_orders result"),
+      order_id: z.coerce.number().describe("Numeric order ID from billit_list_orders result"),
       company_id: companyId,
     },
     async ({ order_id, company_id }) => {
@@ -130,15 +131,15 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
     "billit_update_order",
     "Update a limited set of fields on an existing order: payment status, send status, approval status, internal info, account code, export flags. Only include fields you want to change — absent fields are not modified.\n\nNOTE: Only fields present in the request are updated. To mark an order as paid, provide both paid=true and paid_date. To approve use billit_confirm_order (shortcut) or set approval_status='approved' here.",
     {
-      order_id: z.number().describe("Numeric order ID to update"),
-      paid: z.boolean().optional().describe("Set to true to mark order as paid"),
+      order_id: z.coerce.number().describe("Numeric order ID to update"),
+      paid: coerceBool.describe("Set to true to mark order as paid"),
       paid_date: z.string().optional().describe("Date payment was received (YYYY-MM-DD), required when setting paid=true"),
-      is_sent: z.boolean().optional().describe("Mark order as sent to customer"),
+      is_sent: coerceBool.describe("Mark order as sent to customer"),
       approval_status: z.enum(["none", "approved", "rejected"]).optional().describe("'none', 'approved', or 'rejected' — controls Billit processing"),
       internal_info: z.string().optional().describe("Internal note/memo not visible to customer"),
       account_code: z.string().optional().describe("Accounting code for bookkeeping export"),
-      invoiced: z.boolean().optional().describe("Mark as invoiced (for offers)"),
-      exported_to_connector: z.boolean().optional().describe("Mark as exported to external accounting connector"),
+      invoiced: coerceBool.describe("Mark as invoiced (for offers)"),
+      exported_to_connector: coerceBool.describe("Mark as exported to external accounting connector"),
       company_id: companyId,
     },
     async ({ order_id, paid, paid_date, is_sent, approval_status, internal_info, account_code, invoiced, exported_to_connector, company_id }) => {
@@ -160,7 +161,7 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
     "billit_confirm_order",
     "Shortcut to approve an order for Billit processing. Sets ApprovalStatus to 'approved'. Required before Billit will process/send the invoice. Equivalent to billit_update_order with approval_status='approved'.",
     {
-      order_id: z.number().describe("Numeric order ID to approve"),
+      order_id: z.coerce.number().describe("Numeric order ID to approve"),
       company_id: companyId,
     },
     async ({ order_id, company_id }) => {
@@ -173,7 +174,7 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
     "billit_delete_order",
     "Delete an order. Use with caution — this is permanent. Typically only applicable for draft or rejected orders.",
     {
-      order_id: z.number().describe("Numeric order ID to delete"),
+      order_id: z.coerce.number().describe("Numeric order ID to delete"),
       company_id: companyId,
     },
     async ({ order_id, company_id }) => {
@@ -186,8 +187,8 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
     "billit_register_payment",
     "Register a payment for an order. Use after confirming receipt of payment. Multiple payments can be registered (partial payments). Next step: billit_update_order with paid=true when fully paid.",
     {
-      order_id: z.number().describe("Numeric order ID"),
-      amount: z.number().describe("Payment amount as decimal (e.g. 121.00)"),
+      order_id: z.coerce.number().describe("Numeric order ID"),
+      amount: z.coerce.number().describe("Payment amount as decimal (e.g. 121.00)"),
       payment_date: z.string().describe("Date payment was received (YYYY-MM-DD)"),
       payment_reference: z.string().optional().describe("Payment reference or bank transaction ID"),
       company_id: companyId,

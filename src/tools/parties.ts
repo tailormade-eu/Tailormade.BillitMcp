@@ -6,7 +6,7 @@ function respond(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-const companyId = z.number().optional()
+const companyId = z.coerce.number().optional()
   .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
 
 export function registerPartyTools(server: McpServer, client: BillitClient) {
@@ -18,8 +18,8 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
       filter: z.string().optional().describe("OData $filter expression. Examples: \"DisplayName eq 'Acme NV'\", \"PartyType eq 'Customer'\""),
       orderby: z.string().optional().describe("OData $orderby expression. Examples: 'CommercialName asc', 'DisplayName desc'"),
       search: z.string().optional().describe("Full-text search on name, VAT number, email. Sent as separate 'fullTextSearch' query param."),
-      top: z.number().optional().describe("Max results per page (max: 120)"),
-      skip: z.number().optional().describe("Items to skip for pagination (default: 0)"),
+      top: z.coerce.number().optional().describe("Max results per page (max: 120)"),
+      skip: z.coerce.number().optional().describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
     async ({ party_type, filter, orderby, search, top, skip, company_id }) => {
@@ -42,7 +42,7 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
     "billit_get_party",
     "Get full details of a party including all addresses, identifiers (GLN, VAT), IBAN/BIC, language, and contact info. Use PartyID from billit_list_parties.",
     {
-      party_id: z.number().describe("Numeric party ID from billit_list_parties result"),
+      party_id: z.coerce.number().describe("Numeric party ID from billit_list_parties result"),
       company_id: companyId,
     },
     async ({ party_id, company_id }) => {
@@ -105,7 +105,7 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
     "billit_update_party",
     "Update party details. Only fields provided in the request are modified — absent fields remain unchanged.",
     {
-      party_id: z.number().describe("Numeric party ID to update"),
+      party_id: z.coerce.number().describe("Numeric party ID to update"),
       commercial_name: z.string().optional().describe("Updated company or person name"),
       vat_number: z.string().optional().describe("Updated VAT number"),
       email: z.string().optional().describe("Updated email address"),

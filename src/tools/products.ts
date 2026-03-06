@@ -6,7 +6,7 @@ function respond(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-const companyId = z.number().optional()
+const companyId = z.coerce.number().optional()
   .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
 
 export function registerProductTools(server: McpServer, client: BillitClient) {
@@ -17,8 +17,8 @@ export function registerProductTools(server: McpServer, client: BillitClient) {
       filter: z.string().optional().describe("OData $filter expression. Examples: \"VATPercentage eq 21\", \"Reference eq 'SKU-001'\""),
       orderby: z.string().optional().describe("OData $orderby expression. Examples: 'Description asc', 'UnitPrice desc'"),
       search: z.string().optional().describe("Full-text search on product description or reference code. Sent as 'fullTextSearch' query param."),
-      top: z.number().optional().describe("Max results per page (max: 120)"),
-      skip: z.number().optional().describe("Items to skip for pagination (default: 0)"),
+      top: z.coerce.number().optional().describe("Max results per page (max: 120)"),
+      skip: z.coerce.number().optional().describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
     async ({ filter, orderby, search, top, skip, company_id }) => {
@@ -38,7 +38,7 @@ export function registerProductTools(server: McpServer, client: BillitClient) {
     "billit_get_product",
     "Get full details of a single product including price, VAT percentage, and unit. Use ProductID from billit_list_products.",
     {
-      product_id: z.number().describe("Numeric product ID from billit_list_products result"),
+      product_id: z.coerce.number().describe("Numeric product ID from billit_list_products result"),
       company_id: companyId,
     },
     async ({ product_id, company_id }) => {
@@ -53,8 +53,8 @@ export function registerProductTools(server: McpServer, client: BillitClient) {
     {
       description: z.string().describe("Product or service description (required)"),
       reference: z.string().optional().describe("Unique product reference/SKU code. If a product with this reference exists, it will be updated."),
-      unit_price: z.number().optional().describe("Default unit price (excl. VAT) as decimal"),
-      vat_percentage: z.number().optional().describe("VAT percentage as number (e.g. 21 for 21%, 0 for VAT exempt)"),
+      unit_price: z.coerce.number().optional().describe("Default unit price (excl. VAT) as decimal"),
+      vat_percentage: z.coerce.number().optional().describe("VAT percentage as number (e.g. 21 for 21%, 0 for VAT exempt)"),
       unit: z.string().optional().describe("Unit of measure (e.g. 'piece', 'hour', 'kg')"),
       company_id: companyId,
     },

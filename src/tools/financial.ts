@@ -6,7 +6,7 @@ function respond(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-const companyId = z.number().optional()
+const companyId = z.coerce.number().optional()
   .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
 
 export function registerFinancialTools(server: McpServer, client: BillitClient) {
@@ -60,9 +60,9 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
         .describe("OData $filter expression. Date syntax requires datetime'': \"ValueDate ge datetime'2026-01-01T00:00:00'\". Other examples: \"NameCounterParty eq 'Mehmet Eryilmaz'\", \"TotalAmount ge 500\""),
       orderby: z.string().optional()
         .describe("OData $orderby expression. Examples: 'ValueDate desc', 'TotalAmount desc', 'ValueDate asc'"),
-      top: z.number().optional()
+      top: z.coerce.number().optional()
         .describe("Max results per page (max: 120)"),
-      skip: z.number().optional()
+      skip: z.coerce.number().optional()
         .describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
@@ -106,9 +106,9 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
     {
       orderby: z.string().optional()
         .describe("OData $orderby expression. Example: 'Name asc'"),
-      top: z.number().optional()
+      top: z.coerce.number().optional()
         .describe("Max results per page (max: 120)"),
-      skip: z.number().optional()
+      skip: z.coerce.number().optional()
         .describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
