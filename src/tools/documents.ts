@@ -12,15 +12,19 @@ const companyId = z.number().optional()
 export function registerDocumentTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_list_documents",
-    "List documents stored in Billit. Returns document metadata including DocumentID, FileName, and associated order. Use to find documents linked to orders or uploaded separately.",
+    "List documents stored in Billit. Returns document metadata including DocumentID, FileName, and associated order. Supports OData $filter, $orderby, full-text search.\n\nEXAMPLES:\n- orderby='CreationDate desc'\n- filter=\"OrderID eq 12345\"",
     {
+      filter: z.string().optional().describe("OData $filter expression. Examples: \"OrderID eq 12345\", \"FileName eq 'invoice.pdf'\""),
+      orderby: z.string().optional().describe("OData $orderby expression. Examples: 'CreationDate desc', 'FileName asc'"),
       search: z.string().optional().describe("Full-text search on document name or content. Sent as 'fullTextSearch' query param."),
-      top: z.number().optional().describe("Max results per page (default: 50)"),
+      top: z.number().optional().describe("Max results per page (max: 120)"),
       skip: z.number().optional().describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
-    async ({ search, top, skip, company_id }) => {
+    async ({ filter, orderby, search, top, skip, company_id }) => {
       const params = new URLSearchParams();
+      if (filter) params.set("$filter", filter);
+      if (orderby) params.set("$orderby", orderby);
       if (search) params.set("fullTextSearch", search);
       if (top) params.set("$top", String(top));
       if (skip) params.set("$skip", String(skip));

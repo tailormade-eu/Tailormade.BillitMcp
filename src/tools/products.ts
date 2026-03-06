@@ -12,15 +12,19 @@ const companyId = z.number().optional()
 export function registerProductTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_list_products",
-    "List products/services in the Billit product catalog. Returns ProductID, Description, Reference, UnitPrice, VATPercentage, Unit. Use to find products before adding them as order lines. Next step: billit_create_order using product descriptions and prices.",
+    "List products/services in the Billit product catalog. Returns ProductID, Description, Reference, UnitPrice, VATPercentage, Unit. Supports OData $filter, $orderby, full-text search. Next step: billit_create_order using product descriptions and prices.\n\nEXAMPLES:\n- orderby='Description asc'\n- filter=\"VATPercentage eq 21\"",
     {
+      filter: z.string().optional().describe("OData $filter expression. Examples: \"VATPercentage eq 21\", \"Reference eq 'SKU-001'\""),
+      orderby: z.string().optional().describe("OData $orderby expression. Examples: 'Description asc', 'UnitPrice desc'"),
       search: z.string().optional().describe("Full-text search on product description or reference code. Sent as 'fullTextSearch' query param."),
-      top: z.number().optional().describe("Max results per page (default: 50)"),
+      top: z.number().optional().describe("Max results per page (max: 120)"),
       skip: z.number().optional().describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
-    async ({ search, top, skip, company_id }) => {
+    async ({ filter, orderby, search, top, skip, company_id }) => {
       const params = new URLSearchParams();
+      if (filter) params.set("$filter", filter);
+      if (orderby) params.set("$orderby", orderby);
       if (search) params.set("fullTextSearch", search);
       if (top) params.set("$top", String(top));
       if (skip) params.set("$skip", String(skip));

@@ -102,16 +102,19 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_list_reports ───────────────────────────────────────────
   server.tool(
     "billit_list_reports",
-    "List available reports in Billit (VAT reports, sales reports, etc.). Returns report metadata. Use billit_get_report to retrieve the actual report data.",
+    "List available reports in Billit (VAT reports, sales reports, etc.). Returns report metadata. Supports OData $orderby. Use billit_get_report to retrieve the actual report data.",
     {
+      orderby: z.string().optional()
+        .describe("OData $orderby expression. Example: 'Name asc'"),
       top: z.number().optional()
-        .describe("Max results per page (default: 50)"),
+        .describe("Max results per page (max: 120)"),
       skip: z.number().optional()
         .describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
-    async ({ top, skip, company_id }) => {
+    async ({ orderby, top, skip, company_id }) => {
       const params = new URLSearchParams();
+      if (orderby) params.set("$orderby", orderby);
       if (top) params.set("$top", String(top));
       if (skip) params.set("$skip", String(skip));
       const qs = params.toString();

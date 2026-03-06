@@ -9,9 +9,13 @@
 | 03 | Subscriptions | Add tools for Billit subscription management (recurring invoices) | Medium |
 | 04 | Credit notes workflow | Dedicated flow for creating and sending credit notes linked to original invoice | Medium |
 | 05 | Quotations/Offers | Full offer workflow: create → send → convert to invoice | Medium |
-| 06 | GLAccount support | Add GL account code mapping to orders and order lines | Low |
-| 07 | Webhook support | Register/list/delete Billit webhooks for event-driven integrations | Low |
+| 06 | GLAccount support | Tools for `/v1/glaccounts` — create + import GL account codes for bookkeeping mapping | Low |
+| 07 | Webhook support | Register/list/delete/refresh Billit webhooks. Events: Order (I/U/D) + Message. Signature verification for security. Requires HTTPS endpoint. | Low |
 | 08 | Batch operations | Confirm and send multiple orders in one call | Low |
+| 09 | Idempotent tokens | Add `IdempotentToken` header support on create operations (POST) to prevent duplicate invoice creation on retry | Low |
+| 10 | Sandbox environment | Add `BILLIT_SANDBOX=true` env var to switch base URL to sandbox for safe testing | Low |
+| 11 | sFTP / batch export | Document sFTP integration option for high-volume accountant export scenarios | Low |
+| 12 | Regional extensions | Poland (KSeF), France (Chorus Pro) — extra fields on orders for cross-border compliance | Low |
 
 ## OAuth Implementation Notes
 

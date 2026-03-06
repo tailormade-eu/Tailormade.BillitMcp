@@ -12,14 +12,16 @@ const companyId = z.number().optional()
 export function registerPeppolTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_peppol_list_inbox",
-    "List incoming Peppol messages (e-invoices received from suppliers via the Peppol network). Returns inbox items with inboxItemId, sender, document type, and date. Next steps: billit_peppol_confirm_inbox to accept, billit_peppol_refuse_inbox to reject.",
+    "List incoming Peppol messages (e-invoices received from suppliers via the Peppol network). Returns inbox items with inboxItemId, sender, document type, and date. Supports OData $orderby. Next steps: billit_peppol_confirm_inbox to accept, billit_peppol_refuse_inbox to reject.",
     {
-      top: z.number().optional().describe("Max results per page (default: 50)"),
+      orderby: z.string().optional().describe("OData $orderby expression. Example: 'ReceivedDate desc'"),
+      top: z.number().optional().describe("Max results per page (max: 120)"),
       skip: z.number().optional().describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
-    async ({ top, skip, company_id }) => {
+    async ({ orderby, top, skip, company_id }) => {
       const params = new URLSearchParams();
+      if (orderby) params.set("$orderby", orderby);
       if (top) params.set("$top", String(top));
       if (skip) params.set("$skip", String(skip));
       const qs = params.toString();

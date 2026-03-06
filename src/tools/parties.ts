@@ -12,17 +12,23 @@ const companyId = z.number().optional()
 export function registerPartyTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_list_parties",
-    "List parties (customers and/or suppliers) in Billit. Returns array with PartyID, CommercialName, VATNumber, Email, PartyType. Use party_type to filter customers vs suppliers. Supports full-text search by name or VAT. Next steps: billit_get_party for full details, billit_create_order to create an invoice for a party.\n\nNOTE: fullTextSearch is a separate query param — do NOT put it in the OData $filter. Use billit_search_company to look up company details by VAT/KBO number before creating a new party.",
+    "List parties (customers and/or suppliers) in Billit. Returns array with PartyID, CommercialName, VATNumber, Email, PartyType. Supports OData $filter, $orderby, full-text search. Next steps: billit_get_party for full details, billit_create_order to create an invoice for a party.\n\nEXAMPLES:\n- filter=\"PartyType eq 'Customer'\"\n- filter=\"DisplayName eq 'Acme NV'\"\n- orderby='CommercialName asc'\n\nNOTE: fullTextSearch is a separate param — do NOT put it in OData $filter.",
     {
-      party_type: z.enum(["Customer", "Supplier", "Both"]).optional().describe("Filter by party type: 'Customer', 'Supplier', or 'Both'. Omit to return all."),
+      party_type: z.enum(["Customer", "Supplier", "Both"]).optional().describe("Shortcut filter by party type. Equivalent to filter=\"PartyType eq '...'\"."),
+      filter: z.string().optional().describe("OData $filter expression. Examples: \"DisplayName eq 'Acme NV'\", \"PartyType eq 'Customer'\""),
+      orderby: z.string().optional().describe("OData $orderby expression. Examples: 'CommercialName asc', 'DisplayName desc'"),
       search: z.string().optional().describe("Full-text search on name, VAT number, email. Sent as separate 'fullTextSearch' query param."),
-      top: z.number().optional().describe("Max results per page (default: 50)"),
+      top: z.number().optional().describe("Max results per page (max: 120)"),
       skip: z.number().optional().describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
-    async ({ party_type, search, top, skip, company_id }) => {
+    async ({ party_type, filter, orderby, search, top, skip, company_id }) => {
+      const filters: string[] = [];
+      if (party_type) filters.push(`PartyType eq '${party_type}'`);
+      if (filter) filters.push(filter);
       const params = new URLSearchParams();
-      if (party_type) params.set("$filter", `PartyType eq '${party_type}'`);
+      if (filters.length) params.set("$filter", filters.join(" and "));
+      if (orderby) params.set("$orderby", orderby);
       if (search) params.set("fullTextSearch", search);
       if (top) params.set("$top", String(top));
       if (skip) params.set("$skip", String(skip));
