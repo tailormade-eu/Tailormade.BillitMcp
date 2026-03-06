@@ -55,3 +55,23 @@
 [20:44:57] 
 ▶️  Task [04] BillitMcp — Products tools
 [20:44:57]    🤖 Invoking Claude CLI...
+      Klaar. 3 product tools aangemaakt:
+      
+      | Tool | Endpoint | Functie |
+      |------|----------|---------|
+      | `billit_list_products` | `GET /v1/products` | Zoek/lijst producten met fullTextSearch + paginatie |
+      | `billit_get_product` | `GET /v1/products/{id}` | Product detail ophalen |
+      | `billit_create_product` | `POST /v1/products` | Product aanmaken/upserten (zelfde reference = update) |
+      
+      Geregistreerd in `index.ts`, build OK.
+[20:45:51]    🔍 Verifying: npm run build
+
+> @tailormade/billit-mcp@1.0.0 build
+> tsc
+
+
+[20:45:52]    ✅ Verify passed.
+[20:45:52]    ✅ Done: BillitMcp — Products tools
+[20:45:53] 
+▶️  Task [05] BillitMcp — Peppol tools
+[20:45:53]    🤖 Invoking Claude CLI...
