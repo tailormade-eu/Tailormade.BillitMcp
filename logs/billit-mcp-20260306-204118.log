@@ -205,3 +205,11 @@ Tools registered:      39
 [20:53:45] 
 ▶️  Task [11] BillitMcp — CLAUDE.md
 [20:53:45]    🤖 Invoking Claude CLI...
+      Done. `CLAUDE.md` aangemaakt in repo root en PROGRESS.md bijgewerkt met Task 11 samenvatting.
+[20:54:35]    🔍 Verifying: ""
+
+[20:54:35]    ✅ Verify passed.
+[20:54:35]    ✅ Done: BillitMcp — CLAUDE.md
+[20:54:36] 
+▶️  Task [08] BillitMcp — README + GUIDELINES
+[20:54:36]    🤖 Invoking Claude CLI...
