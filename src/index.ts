@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { BillitClient } from "./api/client.js";
 import { registerOrderTools } from "./tools/orders.js";
+import { registerPartyTools } from "./tools/parties.js";
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -22,6 +23,7 @@ async function main(): Promise<void> {
   const server = new McpServer({ name: "billit-mcp", version: "1.0.0" });
 
   registerOrderTools(server, client);
+  registerPartyTools(server, client);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

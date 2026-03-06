@@ -9,3 +9,28 @@
 [20:41:18] 
 ▶️  Task [02] BillitMcp — Orders tools
 [20:41:18]    🤖 Invoking Claude CLI...
+      Klaar. 8 order tools aangemaakt in `src/tools/orders.ts`, geregistreerd in `index.ts`, build succesvol.
+      
+      **Samenvatting:**
+      
+      | Tool | API | Actie |
+      |------|-----|-------|
+      | `billit_list_orders` | GET /v1/orders | OData filter + fullTextSearch |
+      | `billit_get_order` | GET /v1/orders/{id} | Detail + orderlines |
+      | `billit_create_order` | POST /v1/orders | Nieuwe factuur/creditnota |
+      | `billit_update_order` | PATCH /v1/orders/{id} | Velden updaten |
+      | `billit_confirm_order` | PATCH /v1/orders/{id} | ApprovalStatus=approved |
+      | `billit_delete_order` | DELETE /v1/orders/{id} | Verwijderen |
+      | `billit_register_payment` | POST /v1/orders/{id}/payments | Betaling registreren |
+      | `billit_send_order` | POST /v1/orders/commands/send | Verzenden (email/Peppol) |
+[20:43:33]    🔍 Verifying: npm run build
+
+> @tailormade/billit-mcp@1.0.0 build
+> tsc
+
+
+[20:43:34]    ✅ Verify passed.
+[20:43:34]    ✅ Done: BillitMcp — Orders tools
+[20:43:35] 
+▶️  Task [03] BillitMcp — Parties tools
+[20:43:35]    🤖 Invoking Claude CLI...
