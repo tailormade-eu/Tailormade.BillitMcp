@@ -101,3 +101,24 @@
 [20:47:28] 
 ▶️  Task [06] BillitMcp — Documents & Files tools
 [20:47:28]    🤖 Invoking Claude CLI...
+      Klaar. 4 tools aangemaakt in `src/tools/documents.ts`:
+      
+      | Tool | Endpoint | Doel |
+      |------|----------|------|
+      | `billit_list_documents` | GET /v1/documents | Zoeken/pagineren documenten |
+      | `billit_get_document` | GET /v1/documents/{id} | Document metadata + fileID |
+      | `billit_upload_document` | POST /v1/documents | Upload base64 bestand |
+      | `billit_download_file` | GET /v1/files/{uuid} | Download via UUID |
+      
+      Build succesvol, 0 TS errors. Geregistreerd in index.ts, PROGRESS.md bijgewerkt.
+[20:49:25]    🔍 Verifying: npm run build
+
+> @tailormade/billit-mcp@1.0.0 build
+> tsc
+
+
+[20:49:26]    ✅ Verify passed.
+[20:49:26]    ✅ Done: BillitMcp — Documents & Files tools
+[20:49:27] 
+▶️  Task [07] BillitMcp — Financial Transactions, Reports, Account & Misc tools
+[20:49:27]    🤖 Invoking Claude CLI...
