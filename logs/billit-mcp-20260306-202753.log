@@ -1,0 +1,11 @@
+[LOG] D:\source\repos\Tailormade\Tailormade.BillitMcp\logs\billit-mcp-20260306-202753.log
+[20:27:53] 
+🚀 CodingMachine starting
+[20:27:53]    Project  : billit-mcp
+[20:27:53]    Mode     : serial
+[20:27:53]    Branch   : disabled
+[20:27:53]    Watch    : disabled
+[20:27:53]    Logging  : enabled (debug: False)
+[20:27:53] 
+▶️  Task [01] BillitMcp — Project setup (TypeScript MCP)
+[20:27:53]    🤖 Invoking Claude CLI...
