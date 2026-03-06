@@ -8,6 +8,7 @@ import { registerProductTools } from "./tools/products.js";
 import { registerPeppolTools } from "./tools/peppol.js";
 import { registerDocumentTools } from "./tools/documents.js";
 import { registerFinancialTools } from "./tools/financial.js";
+import { registerToProcessTools } from "./tools/toprocess.js";
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -32,6 +33,7 @@ async function main(): Promise<void> {
   registerPeppolTools(server, client);
   registerDocumentTools(server, client);
   registerFinancialTools(server, client);
+  registerToProcessTools(server, client);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

@@ -122,3 +122,33 @@
 [20:49:27] 
 ▶️  Task [07] BillitMcp — Financial Transactions, Reports, Account & Misc tools
 [20:49:27]    🤖 Invoking Claude CLI...
+      Klaar. Samenvatting:
+      
+      **`src/tools/financial.ts`** — 11 tools aangemaakt:
+      
+      | Tool | Endpoint | Type |
+      |------|----------|------|
+      | `billit_list_financial_transactions` | GET /v1/financialTransactions | Lijst + zoek |
+      | `billit_import_financial_transactions` | POST /v1/financialTransactions/commands/import | CODA/MT940 import |
+      | `billit_list_reports` | GET /v1/reports | Lijst |
+      | `billit_get_report` | GET /v1/reports/{id} | Detail |
+      | `billit_get_account_info` | GET /v1/account/accountInformation | Geen params |
+      | `billit_search_company` | GET /v1/misc/companysearch/{keywords} | KBO zoek |
+      | `billit_list_typecodes` | GET /v1/misc/typecodes/{type} | VATRate/Unit/etc |
+      | `billit_list_accountant_feeds` | GET /v1/accountant/feeds | Rate-limited |
+      | `billit_register_accountant_feed` | POST /v1/accountant/feeds | One-time setup |
+      | `billit_confirm_accountant_feed` | POST /v1/accountant/feeds/confirm | Bevestig items |
+      | `billit_download_accountant_file` | GET /v1/accountant/files/{id} | Base64 download |
+      
+      Build succesvol, geregistreerd in `index.ts`, PROGRESS.md bijgewerkt.
+[20:51:19]    🔍 Verifying: npm run build
+
+> @tailormade/billit-mcp@1.0.0 build
+> tsc
+
+
+[20:51:21]    ✅ Verify passed.
+[20:51:21]    ✅ Done: BillitMcp — Financial Transactions, Reports, Account & Misc tools
+[20:51:22] 
+▶️  Task [09] BillitMcp — ToProcess tools
+[20:51:22]    🤖 Invoking Claude CLI...
