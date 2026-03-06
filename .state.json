@@ -1,10 +1,13 @@
 {
-  "02_tools-orders": 4,
-  "03_tools-parties": 4,
-  "04_tools-products": 4,
-  "05_tools-peppol": 4,
-  "06_tools-documents-files": 4,
-  "07_tools-financial-misc": 4,
+  "01_project-setup": 2,
+  "02_tools-orders": 2,
+  "03_tools-parties": 0,
+  "04_tools-products": 0,
+  "05_tools-peppol": 0,
+  "06_tools-documents-files": 0,
+  "07_tools-financial-misc": 0,
   "08_readme-guidelines": 4,
-  "01_project-setup": 2
+  "09_tools-toprocess": 0,
+  "10_coverage-script": 4,
+  "11_claude-md": 4
 }

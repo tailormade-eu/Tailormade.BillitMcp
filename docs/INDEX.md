@@ -162,12 +162,11 @@
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/accountant/feeds` | GET | List feeds |
-| `/v1/accountant/feeds` | POST | Register feed |
-| `/v1/accountant/feeds/{feedName}` | GET | Get feed items |
-| `/v1/accountant/feeds/{feedName}` | DELETE | Delete feed |
-| `/v1/accountant/feeds/{feedName}/{feedItemID}/confirm` | POST | Confirm download |
-| `/v1/accountant/feeds/{feedName}/{feedItemID}` | GET | Download file |
+| `/v1/accountant/feeds` | GET | List all feeds to download (poll max once/min) |
+| `/v1/accountant/feeds` | POST | Register new feed — newly exported orders/docs will appear in it |
+| `/v1/accountant/feeds` | DELETE | Remove a feed |
+| `/v1/accountant/feeds/confirm` | POST | Confirm successfully downloaded feed items (removes them from feed list) |
+| `/v1/accountant/files/{fileID}` | GET | Download a file (e.g. CODA) from the feed |
 
 ---
 
@@ -198,6 +197,15 @@
 | `/v1/misc/companysearch/{Keywords}` | GET | Company lookup (KBO/VAT) |
 | `/v1/misc/typecodes/{TypeCodeType}` | GET | List type codes (VAT, units, ...) |
 | `/v1/misc/typecodes/{TypeCodeType}/{key}` | GET | Get type code translation |
+
+---
+
+## ToProcess
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/toProcess` | POST | Submit a file/document for processing (upload) |
+| `/v1/toProcess/{uploadID}` | DELETE | Cancel/remove an upload |
 
 ---
 

@@ -9,3 +9,27 @@
 [20:27:53] 
 ▶️  Task [01] BillitMcp — Project setup (TypeScript MCP)
 [20:27:53]    🤖 Invoking Claude CLI...
+      Done. Project is volledig opgezet:
+      
+      | Item | Status |
+      |------|--------|
+      | package.json | OK |
+      | tsconfig.json | OK (Node16, identiek aan TL MCP) |
+      | .gitignore | OK |
+      | src/api/client.ts | OK |
+      | src/index.ts | OK (skeleton) |
+      | npm install | OK (0 vulnerabilities) |
+      | npm run build | OK (0 TS errors) |
+      | PROGRESS.md | OK |
+[20:29:00]    🔍 Verifying: npm run build
+
+> @tailormade/billit-mcp@1.0.0 build
+> tsc
+
+
+[20:29:01]    ✅ Verify passed.
+[20:29:01]    ✅ Done: BillitMcp — Project setup (TypeScript MCP)
+[20:29:02] 
+⏸️  All remaining tasks blocked on dependencies.
+[20:29:02] 
+🏁 Session complete. Total tasks run: 1
