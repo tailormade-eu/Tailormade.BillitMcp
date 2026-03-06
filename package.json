@@ -11,6 +11,7 @@
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "check-coverage": "tsx scripts/check-coverage.ts",
     "prepare": "npm run build"
   },
   "keywords": ["mcp", "billit", "invoicing", "peppol", "e-invoice", "model-context-protocol", "ai", "claude", "tailormade"],

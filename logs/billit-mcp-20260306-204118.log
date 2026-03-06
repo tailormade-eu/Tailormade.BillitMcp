@@ -152,3 +152,20 @@
 [20:51:22] 
 ▶️  Task [09] BillitMcp — ToProcess tools
 [20:51:22]    🤖 Invoking Claude CLI...
+      Klaar. 2 tools aangemaakt in `src/tools/toprocess.ts`:
+      
+      - **billit_submit_for_processing** — POST /v1/toProcess, async document processing met llmTip over list_orders direction=Cost
+      - **billit_cancel_processing** — DELETE /v1/toProcess/{uploadID}, voor pending uploads
+      
+      Geregistreerd in index.ts, TypeScript build clean.
+[20:52:22]    🔍 Verifying: npm run build
+
+> @tailormade/billit-mcp@1.0.0 build
+> tsc
+
+
+[20:52:23]    ✅ Verify passed.
+[20:52:23]    ✅ Done: BillitMcp — ToProcess tools
+[20:52:24] 
+▶️  Task [10] BillitMcp — Coverage check script
+[20:52:24]    🤖 Invoking Claude CLI...
