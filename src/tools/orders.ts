@@ -26,13 +26,15 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
         .describe("Filter by payment status: true = paid, false = unpaid"),
       search: z.string().optional()
         .describe("Full-text search across order fields (order number, customer name, reference). Sent as separate 'fullTextSearch' query param, NOT in OData filter."),
+      orderby: z.string().optional()
+        .describe("OData $orderby expression. Examples: 'OrderDate desc', 'TotalAmountInclVat desc', 'LastModified desc'"),
       top: z.number().optional()
-        .describe("Max results per page (default: 50)"),
+        .describe("Max results per page (max: 120)"),
       skip: z.number().optional()
         .describe("Items to skip for pagination (default: 0)"),
       company_id: companyId,
     },
-    async ({ direction, order_type, modified_after, approval_status, paid, search, top, skip, company_id }) => {
+    async ({ direction, order_type, modified_after, approval_status, paid, search, orderby, top, skip, company_id }) => {
       const filters: string[] = [];
       if (direction) filters.push(`OrderDirection eq '${direction}'`);
       if (order_type) filters.push(`OrderType eq '${order_type}'`);
@@ -42,6 +44,7 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       const params = new URLSearchParams();
       if (filters.length) params.set("$filter", filters.join(" and "));
       if (search) params.set("fullTextSearch", search);
+      if (orderby) params.set("$orderby", orderby);
       if (top) params.set("$top", String(top));
       if (skip) params.set("$skip", String(skip));
       const qs = params.toString();
