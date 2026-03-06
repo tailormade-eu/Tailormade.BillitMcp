@@ -31,12 +31,7 @@ This server supports multiple Billit companies from a single API key.
 3. Claude stores mapping in memory: e.g. `JaRa Productions bv → 208029`
 4. All subsequent tool calls pass `company_id` based on context
 
-**Company IDs (JaRa):**
-| Company | PartyID |
-|---------|---------|
-| JaRa Productions bv | 208029 |
-| TAILORMADE 2018,SL | 663845 |
-| Intern ACC JaRa Productions | 20034178 |
+**Company IDs:** run `billit_get_account_info` to discover your own PartyIDs.
 
 ---
 
@@ -49,85 +44,85 @@ billit_get_account_info
 - [x] Returns Companies array with PartyID, Name, VATNumber
 - [x] Works without PartyID header
 
-### 2. Orders — JaRa
+### 2. Orders
 ```
-billit_list_orders company_id=208029 direction=Income
+billit_list_orders company_id=<your-party-id> direction=Income
 ```
-- [x] Returns outgoing invoices for JaRa Productions
+- [x] Returns outgoing invoices
 
 ```
-billit_list_orders company_id=663845 direction=Income
+billit_list_orders company_id=<your-second-party-id> direction=Income
 ```
-- [x] Returns outgoing invoices for Tailormade SL
+- [x] Returns outgoing invoices for second company (multi-company)
 
 ### 3. Create + Confirm + Send (Happy Path)
 ```
-billit_create_order company_id=208029 order_type=Invoice order_direction=Income
-  order_date=2026-03-06 customer_name=Test NV customer_vat=BE0123456789
+billit_create_order company_id=<party-id> order_type=Invoice order_direction=Income
+  order_date=2026-01-01 customer_name="Test NV" customer_vat=BE0123456789
   lines=[{"description":"Test service","quantity":1,"unit_price_excl":100,"vat_percentage":21}]
 ```
 - [ ] Returns OrderID
 
 ```
-billit_confirm_order company_id=208029 order_id=<id>
+billit_confirm_order company_id=<party-id> order_id=<id>
 ```
 - [ ] ApprovalStatus = approved
 
 ```
-billit_send_order company_id=208029 order_ids=[<id>]
+billit_send_order company_id=<party-id> order_ids=[<id>]
 ```
 - [ ] Sent successfully
 
 ### 4. Parties
 ```
-billit_list_parties company_id=208029 party_type=Customer search=Test
+billit_list_parties company_id=<party-id> party_type=Customer search=Test
 ```
 - [ ] Returns matching customers
 
 ```
-billit_create_party company_id=208029 commercial_name=Test NV vat_number=BE0123456789
+billit_create_party company_id=<party-id> commercial_name="Test NV" vat_number=BE0123456789
 ```
 - [ ] Returns PartyID
 
 ### 5. Products
 ```
-billit_list_products company_id=208029
+billit_list_products company_id=<party-id>
 ```
 - [ ] Returns product catalog
 
 ### 6. Financial Transactions
 ```
-billit_list_financial_transactions company_id=208029 top=5
+billit_list_financial_transactions company_id=<party-id> top=5
 ```
 - [x] Returns transactions
 
 ```
-billit_list_financial_transactions company_id=208029 orderby="ValueDate desc" top=5
+billit_list_financial_transactions company_id=<party-id> orderby="ValueDate desc" top=5
 ```
 - [x] Returns most recent transactions first
 
 ```
-billit_list_financial_transactions company_id=208029 filter="ValueDate ge datetime'2026-03-01T00:00:00'" orderby="ValueDate desc" top=10
+billit_list_financial_transactions company_id=<party-id> filter="ValueDate ge datetime'2026-01-01T00:00:00'" orderby="ValueDate desc" top=10
 ```
 - [x] Date filter + orderby combined works
 
 ```
-billit_list_financial_transactions company_id=208029 search=Eryilmaz
+billit_list_financial_transactions company_id=<party-id> search="<counterparty name>"
 ```
-- [x] Full-text search works — returns all matching transactions with Note field
+- [x] Full-text search works — returns matching transactions with Note field
 
 ### 7. Documents & Files
 ```
-billit_list_documents company_id=208029 top=5
+billit_list_documents company_id=<party-id> top=5
 ```
 - [ ] Returns documents
 
 ```
-billit_get_order company_id=208029 order_id=<confirmed-id>
+billit_get_order company_id=<party-id> order_id=<confirmed-id>
 ```
 - Find a fileID (UUID) in the response, then:
 ```
-billit_download_file company_id=208029 file_id=<uuid>
+billit_download_file company_id=<party-id> file_id=<uuid>
 ```
 - [ ] Returns base64 PDF content
 
@@ -138,13 +133,13 @@ billit_peppol_lookup_participant vat_or_cbe=BE0123456789
 - [ ] Returns participant info or not-found
 
 ```
-billit_peppol_list_inbox company_id=208029
+billit_peppol_list_inbox company_id=<party-id>
 ```
 - [ ] Returns inbox (may be empty)
 
 ### 9. Reports
 ```
-billit_list_reports company_id=208029 top=5
+billit_list_reports company_id=<party-id> top=5
 ```
 - [ ] Returns available reports
 
