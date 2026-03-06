@@ -121,7 +121,7 @@
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/financialTransactions` | GET | List transactions. fullTextSearch |
+| `/v1/financialTransactions` | GET | List transactions. fullTextSearch + OData `$filter` / `$orderby` / `$top` / `$skip` |
 | `/v1/financialTransactions/importFile` | POST | Upload bank file (CODA/MT940) |
 | `/v1/financialTransactions/commands/import` | POST | Import transactions |
 
