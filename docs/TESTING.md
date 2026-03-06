@@ -46,19 +46,19 @@ This server supports multiple Billit companies from a single API key.
 ```
 billit_get_account_info
 ```
-- [ ] Returns Companies array with PartyID, Name, VATNumber
-- [ ] Works without PartyID header
+- [x] Returns Companies array with PartyID, Name, VATNumber
+- [x] Works without PartyID header
 
 ### 2. Orders — JaRa
 ```
 billit_list_orders company_id=208029 direction=Income
 ```
-- [ ] Returns outgoing invoices for JaRa Productions
+- [x] Returns outgoing invoices for JaRa Productions
 
 ```
 billit_list_orders company_id=663845 direction=Income
 ```
-- [ ] Returns outgoing invoices for Tailormade SL
+- [x] Returns outgoing invoices for Tailormade SL
 
 ### 3. Create + Confirm + Send (Happy Path)
 ```
@@ -99,7 +99,22 @@ billit_list_products company_id=208029
 ```
 billit_list_financial_transactions company_id=208029 top=5
 ```
-- [ ] Returns transactions
+- [x] Returns transactions
+
+```
+billit_list_financial_transactions company_id=208029 orderby="ValueDate desc" top=5
+```
+- [x] Returns most recent transactions first
+
+```
+billit_list_financial_transactions company_id=208029 filter="ValueDate ge datetime'2026-03-01T00:00:00'" orderby="ValueDate desc" top=10
+```
+- [x] Date filter + orderby combined works
+
+```
+billit_list_financial_transactions company_id=208029 search=Eryilmaz
+```
+- [x] Full-text search works — returns all matching transactions with Note field
 
 ### 7. Documents & Files
 ```
