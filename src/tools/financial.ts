@@ -6,94 +6,14 @@ function respond(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
+const companyId = z.number().optional()
+  .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
+
 export function registerFinancialTools(server: McpServer, client: BillitClient) {
-  // ── billit_list_financial_transactions ─────────────────────────────
-  server.tool(
-    "billit_list_financial_transactions",
-    "List financial transactions in Billit (bank transactions, payments). Use to reconcile payments with orders. Supports full-text search.",
-    {
-      search: z.string().optional()
-        .describe("Full-text search on transaction description, reference, or amount"),
-      top: z.number().optional()
-        .describe("Max results per page (default: 50)"),
-      skip: z.number().optional()
-        .describe("Items to skip for pagination (default: 0)"),
-    },
-    async ({ search, top, skip }) => {
-      const params = new URLSearchParams();
-      if (search) params.set("fullTextSearch", search);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
-
-      const qs = params.toString();
-      const data = await client.request("GET", `/v1/financialTransactions${qs ? `?${qs}` : ""}`);
-      return respond(JSON.stringify(data, null, 2));
-    },
-  );
-
-  // ── billit_import_financial_transactions ───────────────────────────
-  server.tool(
-    "billit_import_financial_transactions",
-    "Import bank transactions from a CODA or MT940 bank statement file. Use to bulk-import bank transactions for payment reconciliation.\n\nNOTE: Supported formats are CODA (Belgian bank format) and MT940 (SWIFT bank format). file_base64 must be base64-encoded file content.",
-    {
-      file_base64: z.string()
-        .describe("Base64-encoded CODA or MT940 bank statement file content"),
-      file_name: z.string()
-        .describe("File name (e.g. 'statement-2026-01.coda' or 'statement.mt940')"),
-      content_type: z.string()
-        .describe("MIME type of the file"),
-    },
-    async ({ file_base64, file_name, content_type }) => {
-      const body = {
-        FileBase64: file_base64,
-        FileName: file_name,
-        ContentType: content_type,
-      };
-
-      const data = await client.request("POST", "/v1/financialTransactions/commands/import", body);
-      return respond(JSON.stringify(data, null, 2));
-    },
-  );
-
-  // ── billit_list_reports ───────────────────────────────────────────
-  server.tool(
-    "billit_list_reports",
-    "List available reports in Billit (VAT reports, sales reports, etc.). Returns report metadata. Use billit_get_report to retrieve the actual report data.",
-    {
-      top: z.number().optional()
-        .describe("Max results per page (default: 50)"),
-      skip: z.number().optional()
-        .describe("Items to skip for pagination (default: 0)"),
-    },
-    async ({ top, skip }) => {
-      const params = new URLSearchParams();
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
-
-      const qs = params.toString();
-      const data = await client.request("GET", `/v1/reports${qs ? `?${qs}` : ""}`);
-      return respond(JSON.stringify(data, null, 2));
-    },
-  );
-
-  // ── billit_get_report ─────────────────────────────────────────────
-  server.tool(
-    "billit_get_report",
-    "Get the data of a specific Billit report. Use billit_list_reports to find report IDs.",
-    {
-      report_id: z.number()
-        .describe("Numeric report ID from billit_list_reports result"),
-    },
-    async ({ report_id }) => {
-      const data = await client.request("GET", `/v1/reports/${report_id}`);
-      return respond(JSON.stringify(data, null, 2));
-    },
-  );
-
   // ── billit_get_account_info ───────────────────────────────────────
   server.tool(
     "billit_get_account_info",
-    "Get account and company information for the authenticated Billit party: company name, VAT number, address, Peppol status, subscription details. Useful for verifying the connected account.",
+    "Get account and company information for the authenticated Billit API key. Returns a Companies array with PartyID, Name, VATNumber, and other details for each company associated with the API key.\n\nSTARTUP PROTOCOL: If BILLIT_PARTY_ID env is 0 or unknown, call this tool FIRST before any other Billit tool. Store the Companies array in memory (name → PartyID mapping). Then choose the correct company_id for all subsequent Billit tool calls based on conversation context.\n\nEXAMPLE: after calling this, you know 'JaRa Productions bv' = PartyID 208029 and 'TAILORMADE 2018,SL' = PartyID 663845. When user asks about invoices for JaRa, pass company_id=208029 to billit_list_orders.",
     {},
     async () => {
       const data = await client.request("GET", "/v1/account/accountInformation");
@@ -129,13 +49,93 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
     },
   );
 
+  // ── billit_list_financial_transactions ─────────────────────────────
+  server.tool(
+    "billit_list_financial_transactions",
+    "List financial transactions in Billit (bank transactions, payments). Use to reconcile payments with orders. Supports full-text search.",
+    {
+      search: z.string().optional()
+        .describe("Full-text search on transaction description, reference, or amount"),
+      top: z.number().optional()
+        .describe("Max results per page (default: 50)"),
+      skip: z.number().optional()
+        .describe("Items to skip for pagination (default: 0)"),
+      company_id: companyId,
+    },
+    async ({ search, top, skip, company_id }) => {
+      const params = new URLSearchParams();
+      if (search) params.set("fullTextSearch", search);
+      if (top) params.set("$top", String(top));
+      if (skip) params.set("$skip", String(skip));
+      const qs = params.toString();
+      const data = await client.request("GET", `/v1/financialTransactions${qs ? `?${qs}` : ""}`, undefined, company_id);
+      return respond(JSON.stringify(data, null, 2));
+    },
+  );
+
+  // ── billit_import_financial_transactions ───────────────────────────
+  server.tool(
+    "billit_import_financial_transactions",
+    "Import bank transactions from a CODA or MT940 bank statement file. Use to bulk-import bank transactions for payment reconciliation.\n\nNOTE: Supported formats are CODA (Belgian bank format) and MT940 (SWIFT bank format). file_base64 must be base64-encoded file content.",
+    {
+      file_base64: z.string()
+        .describe("Base64-encoded CODA or MT940 bank statement file content"),
+      file_name: z.string()
+        .describe("File name (e.g. 'statement-2026-01.coda' or 'statement.mt940')"),
+      content_type: z.string()
+        .describe("MIME type of the file"),
+      company_id: companyId,
+    },
+    async ({ file_base64, file_name, content_type, company_id }) => {
+      const body = { FileBase64: file_base64, FileName: file_name, ContentType: content_type };
+      const data = await client.request("POST", "/v1/financialTransactions/commands/import", body, company_id);
+      return respond(JSON.stringify(data, null, 2));
+    },
+  );
+
+  // ── billit_list_reports ───────────────────────────────────────────
+  server.tool(
+    "billit_list_reports",
+    "List available reports in Billit (VAT reports, sales reports, etc.). Returns report metadata. Use billit_get_report to retrieve the actual report data.",
+    {
+      top: z.number().optional()
+        .describe("Max results per page (default: 50)"),
+      skip: z.number().optional()
+        .describe("Items to skip for pagination (default: 0)"),
+      company_id: companyId,
+    },
+    async ({ top, skip, company_id }) => {
+      const params = new URLSearchParams();
+      if (top) params.set("$top", String(top));
+      if (skip) params.set("$skip", String(skip));
+      const qs = params.toString();
+      const data = await client.request("GET", `/v1/reports${qs ? `?${qs}` : ""}`, undefined, company_id);
+      return respond(JSON.stringify(data, null, 2));
+    },
+  );
+
+  // ── billit_get_report ─────────────────────────────────────────────
+  server.tool(
+    "billit_get_report",
+    "Get the data of a specific Billit report. Use billit_list_reports to find report IDs.",
+    {
+      report_id: z.number()
+        .describe("Numeric report ID from billit_list_reports result"),
+      company_id: companyId,
+    },
+    async ({ report_id, company_id }) => {
+      const data = await client.request("GET", `/v1/reports/${report_id}`, undefined, company_id);
+      return respond(JSON.stringify(data, null, 2));
+    },
+  );
+
   // ── billit_list_accountant_feeds ──────────────────────────────────
   server.tool(
     "billit_list_accountant_feeds",
     "List all accountant feeds and their pending items. Feeds contain newly exported orders and documents for accountant processing. Poll at most once per minute. Next steps: billit_download_accountant_file to download items, billit_confirm_accountant_feed to confirm processed items.\n\nWARNING: Do not poll more than once per minute — this is a rate-limited endpoint. After downloading feed items, always confirm them with billit_confirm_accountant_feed to remove them from the feed.",
-    {},
-    async () => {
-      const data = await client.request("GET", "/v1/accountant/feeds");
+    { company_id: companyId },
+    async ({ company_id }) => {
+      const data = await client.request("GET", "/v1/accountant/feeds", undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
   );
@@ -144,10 +144,10 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   server.tool(
     "billit_register_accountant_feed",
     "Register a new accountant feed. All newly exported orders and documents will appear in this feed for the accountant to download. One-time setup per accountant integration.",
-    {},
-    async () => {
-      const data = await client.request("POST", "/v1/accountant/feeds");
-      return respond(JSON.stringify(data, null, 2));
+    { company_id: companyId },
+    async ({ company_id }) => {
+      const data = await client.request("POST", "/v1/accountant/feeds", undefined, company_id);
+      return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
   );
 
@@ -158,9 +158,10 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
     {
       feed_item_ids: z.array(z.string())
         .describe("Array of feed item ID strings to confirm as downloaded. Get these from billit_list_accountant_feeds response."),
+      company_id: companyId,
     },
-    async ({ feed_item_ids }) => {
-      const data = await client.request("POST", "/v1/accountant/feeds/confirm", { FeedItemIds: feed_item_ids });
+    async ({ feed_item_ids, company_id }) => {
+      const data = await client.request("POST", "/v1/accountant/feeds/confirm", { FeedItemIds: feed_item_ids }, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
   );
@@ -172,9 +173,10 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
     {
       file_id: z.string()
         .describe("File ID from an accountant feed item"),
+      company_id: companyId,
     },
-    async ({ file_id }) => {
-      const data = await client.request("GET", `/v1/accountant/files/${file_id}`);
+    async ({ file_id, company_id }) => {
+      const data = await client.request("GET", `/v1/accountant/files/${file_id}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
   );

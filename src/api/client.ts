@@ -14,17 +14,21 @@ export class BillitClient {
     this.headers = {
       "Content-Type": "application/json",
       "ApiKey": config.apiKey,
-      "PartyID": String(config.partyId),
     };
+    if (config.partyId) {
+      this.headers["PartyID"] = String(config.partyId);
+    }
     if (config.contextPartyId) {
       this.headers["ContextPartyID"] = String(config.contextPartyId);
     }
   }
 
-  async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async request<T>(method: string, path: string, body?: unknown, partyIdOverride?: number): Promise<T> {
+    const headers = { ...this.headers };
+    if (partyIdOverride) headers["PartyID"] = String(partyIdOverride);
     const res = await fetch(`${this.baseUrl}${path}`, {
       method,
-      headers: this.headers,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {

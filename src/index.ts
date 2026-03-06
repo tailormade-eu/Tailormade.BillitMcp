@@ -18,7 +18,7 @@ function getRequiredEnv(name: string): string {
 
 async function main(): Promise<void> {
   const apiKey = getRequiredEnv("BILLIT_API_KEY");
-  const partyId = parseInt(getRequiredEnv("BILLIT_PARTY_ID"), 10);
+  const partyId = process.env["BILLIT_PARTY_ID"] ? parseInt(process.env["BILLIT_PARTY_ID"], 10) : 0;
   const contextPartyId = process.env["BILLIT_CONTEXT_PARTY_ID"]
     ? parseInt(process.env["BILLIT_CONTEXT_PARTY_ID"], 10)
     : undefined;
