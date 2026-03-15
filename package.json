@@ -1,6 +1,6 @@
 {
   "name": "@tailormade/billit-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server for the Billit invoicing API — orders, parties, products, Peppol, documents and more.",
   "main": "dist/index.js",
   "bin": { "billit-mcp": "dist/index.js" },
