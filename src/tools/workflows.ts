@@ -1,13 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-
-function respond(text: string) {
-  return { content: [{ type: "text" as const, text }] };
-}
-
-const companyId = z.coerce.number().optional()
-  .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
+import { companyId, respond } from "./utils.js";
 
 interface Order {
   OrderID: number;
@@ -50,6 +44,19 @@ interface FullOrder {
   }>;
 }
 
+async function batchAll<T>(tasks: (() => Promise<T>)[], batchSize = 5): Promise<T[]> {
+  const results: T[] = [];
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize);
+    results.push(...await Promise.all(batch.map(fn => fn())));
+  }
+  return results;
+}
+
+function currentYearStart(): string {
+  return new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
+}
+
 export function registerWorkflowTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_check_peppol_coverage",
@@ -60,7 +67,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ since_date, company_id }) => {
-      const fromDate = since_date ?? "2026-01-01";
+      const fromDate = since_date ?? currentYearStart();
 
       // Fetch all outgoing invoices since date (paginate through all pages)
       const allOrders: Order[] = [];
@@ -95,15 +102,15 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
         byVat.get(vat)!.invoices.push({
           id: order.OrderID,
           number: order.OrderNumber,
-          date: order.OrderDate.slice(0, 10),
+          date: (order.OrderDate ?? "").slice(0, 10),
           amount: order.TotalIncl,
         });
       }
 
-      // Check Peppol registration for each unique VAT in parallel
+      // Check Peppol registration for each unique VAT (batches of 5)
       const vatList = Array.from(byVat.entries());
-      const peppolResults = await Promise.all(
-        vatList.map(([vat]) =>
+      const peppolResults = await batchAll(
+        vatList.map(([vat]) => () =>
           client.request<PeppolLookupResponse>("GET", `/v1/peppol/participantInformation/${vat}`)
             .then(r => ({ vat, registered: r?.Registered ?? false }))
             .catch(() => ({ vat, registered: false }))
@@ -149,7 +156,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ since_date, company_id }) => {
-      const fromDate = since_date ?? "2026-01-01";
+      const fromDate = since_date ?? currentYearStart();
 
       // 1. Paginate all Income invoices since date
       const allOrders: Order[] = [];
@@ -179,14 +186,14 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
         else hasVat.push(order);
       }
 
-      // 3. Deduplicate VATs for Peppol lookup
+      // 3. Deduplicate VATs for Peppol lookup (batches of 5)
       const uniqueVats = [...new Set(hasVat.map(o => o.CounterParty.VATNumber!))];
       const peppolMap = new Map<string, boolean>();
-      await Promise.all(
-        uniqueVats.map(vat =>
+      await batchAll(
+        uniqueVats.map(vat => () =>
           client.request<PeppolLookupResponse>("GET", `/v1/peppol/participantInformation/${vat}`)
-            .then(r => peppolMap.set(vat, r?.Registered ?? false))
-            .catch(() => peppolMap.set(vat, false))
+            .then(r => { peppolMap.set(vat, r?.Registered ?? false); })
+            .catch(() => { peppolMap.set(vat, false); })
         )
       );
 
@@ -199,10 +206,10 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
         else notOnPeppolOrders.push(order);
       }
 
-      // 5. Fetch full orders for Peppol-eligible (parallel) to check send status
+      // 5. Fetch full orders for Peppol-eligible (batches of 5) to check send status
       type SendStatus = { order: Order; sent: boolean; deliveryStatus?: string };
-      const fullOrderResults = await Promise.all(
-        peppolEligible.map(order =>
+      const fullOrderResults = await batchAll(
+        peppolEligible.map(order => () =>
           client.request<FullOrder>("GET", `/v1/orders/${order.OrderID}`, undefined, company_id)
             .then(full => {
               // Check Messages for Peppol send
@@ -227,7 +234,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
         const info: InvoiceInfo = {
           id: order.OrderID,
           number: order.OrderNumber,
-          date: order.OrderDate.slice(0, 10),
+          date: (order.OrderDate ?? "").slice(0, 10),
           amount: order.TotalIncl,
           vat: order.CounterParty.VATNumber!,
           customer: order.CounterParty.DisplayName,
@@ -240,7 +247,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       const notOnPeppol: InvoiceInfo[] = notOnPeppolOrders.map(o => ({
         id: o.OrderID,
         number: o.OrderNumber,
-        date: o.OrderDate.slice(0, 10),
+        date: (o.OrderDate ?? "").slice(0, 10),
         amount: o.TotalIncl,
         vat: o.CounterParty.VATNumber!,
         customer: o.CounterParty.DisplayName,

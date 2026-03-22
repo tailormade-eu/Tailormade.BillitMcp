@@ -1,6 +1,10 @@
 #!/usr/bin/env node
+import { readFileSync } from "fs";
+import { join } from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
 import { BillitClient } from "./api/client.js";
 import { registerOrderTools } from "./tools/orders.js";
 import { registerPartyTools } from "./tools/parties.js";
@@ -26,7 +30,7 @@ async function main(): Promise<void> {
 
   const client = new BillitClient({ apiKey, partyId, contextPartyId });
 
-  const server = new McpServer({ name: "billit-mcp", version: "1.0.0" });
+  const server = new McpServer({ name: "billit-mcp", version: pkg.version });
 
   registerOrderTools(server, client);
   registerPartyTools(server, client);

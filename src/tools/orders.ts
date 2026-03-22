@@ -1,20 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-
-function respond(text: string) {
-  return { content: [{ type: "text" as const, text }] };
-}
-
-const companyId = z.coerce.number().optional()
-  .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");
+import { companyId, respond } from "./utils.js";
 
 const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
 
 export function registerOrderTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_list_orders",
-    "List orders from Billit. Returns paginated array of orders (invoices, credit notes, offers). Use direction='Income' for outgoing (sales) orders, direction='Cost' for incoming (purchase) orders. Supports OData filtering and full-text search. Next steps: billit_get_order for full details including order lines, billit_confirm_order to approve, billit_register_payment when paid.\n\nWARNING: OrderDirection 'Income' means money coming IN (= outgoing invoices you send to customers). OrderDirection 'Cost' means money going OUT (= incoming invoices from suppliers). This is counter-intuitive. NOTE: fullTextSearch is a separate query param — do NOT put it in the OData $filter. OData date filter syntax: LastModified ge datetime'2026-01-01T00:00:00'",
+    "List orders from Billit. Returns paginated array of orders (invoices, credit notes, offers). Use direction='Income' for outgoing (sales) orders, direction='Cost' for incoming (purchase) orders. Supports OData filtering and full-text search. Next steps: billit_get_order for full details including order lines, billit_confirm_order to approve, billit_register_payment when paid.\n\nWARNING: OrderDirection 'Income' means money coming IN (= outgoing invoices you send to customers). OrderDirection 'Cost' means money going OUT (= incoming invoices from suppliers). This is counter-intuitive. NOTE: fullTextSearch is a separate query param — do NOT put it in the OData $filter. OData date filter syntax: LastModified ge datetime'2026-01-01T00:00:00'. NOTE: PartyName may be empty in list responses — use billit_get_order for full party/supplier details.",
     {
       direction: z.enum(["Income", "Cost"]).optional()
         .describe("Filter by order direction: 'Income' = outgoing sales invoices (money coming in), 'Cost' = incoming purchase invoices (money going out)"),
@@ -91,9 +85,17 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async (params) => {
-      const parsedLines = JSON.parse(params.lines) as Array<{
+      let parsedLines: Array<{
         description: string; quantity: number; unit_price_excl: number; vat_percentage: number; reference?: string;
       }>;
+      try {
+        parsedLines = JSON.parse(params.lines);
+      } catch {
+        return respond(
+          `Error: 'lines' is not valid JSON. Expected a JSON array of objects, e.g.:\n` +
+          `[{"description":"Service","quantity":1,"unit_price_excl":100,"vat_percentage":21}]`
+        );
+      }
       const body: Record<string, unknown> = {
         OrderType: params.order_type,
         OrderDirection: params.order_direction,
@@ -172,12 +174,16 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_delete_order",
-    "Delete an order. Use with caution — this is permanent. Typically only applicable for draft or rejected orders.",
+    "Delete an order permanently. Typically only applicable for draft or rejected orders. Supports dry_run=true to preview without deleting.",
     {
       order_id: z.coerce.number().describe("Numeric order ID to delete"),
+      dry_run: coerceBool.describe("When true, simulates the delete without making changes (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, company_id }) => {
+    async ({ order_id, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(`Dry run: would delete order ${order_id}. No changes made.`);
+      }
       await client.request("DELETE", `/v1/orders/${order_id}`, undefined, company_id);
       return respond(`Order ${order_id} deleted.`);
     },
