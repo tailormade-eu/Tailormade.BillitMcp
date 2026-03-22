@@ -112,20 +112,23 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       const peppolResults = await batchAll(
         vatList.map(([vat]) => () =>
           client.request<PeppolLookupResponse>("GET", `/v1/peppol/participantInformation/${vat}`)
-            .then(r => ({ vat, registered: r?.Registered ?? false }))
-            .catch(() => ({ vat, registered: false }))
+            .then(r => ({ vat, registered: r?.Registered ?? false, error: undefined as string | undefined }))
+            .catch((e: unknown) => ({ vat, registered: false, error: e instanceof Error ? e.message : "lookup failed" }))
         )
       );
 
-      // Split into registered / not registered
+      // Split into registered / not registered / failed
       type InvoiceEntry = { id: number; number: string; date: string; amount: number };
       const notOnPeppol: Array<{ vat: string; name: string; invoiceCount: number; totalAmount: number; invoices: InvoiceEntry[] }> = [];
       const onPeppol: Array<{ vat: string; name: string; invoiceCount: number }> = [];
+      const lookupFailed: Array<{ vat: string; name: string; invoiceCount: number; error: string }> = [];
 
-      for (const { vat, registered } of peppolResults) {
+      for (const { vat, registered, error } of peppolResults) {
         const entry = byVat.get(vat)!;
         const totalAmount = entry.invoices.reduce((sum, i) => sum + i.amount, 0);
-        if (registered) {
+        if (error) {
+          lookupFailed.push({ vat, name: entry.name, invoiceCount: entry.invoices.length, error });
+        } else if (registered) {
           onPeppol.push({ vat, name: entry.name, invoiceCount: entry.invoices.length });
         } else {
           notOnPeppol.push({ vat, name: entry.name, invoiceCount: entry.invoices.length, totalAmount, invoices: entry.invoices });
@@ -138,9 +141,11 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
           total_customers_with_vat: vatList.length,
           not_on_peppol: notOnPeppol.length,
           on_peppol: onPeppol.length,
+          lookup_failed: lookupFailed.length,
         },
         not_on_peppol: notOnPeppol.sort((a, b) => b.totalAmount - a.totalAmount),
         on_peppol: onPeppol,
+        ...(lookupFailed.length > 0 ? { lookup_failed: lookupFailed } : {}),
       };
 
       return respond(JSON.stringify(result, null, 2));
@@ -189,20 +194,23 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       // 3. Deduplicate VATs for Peppol lookup (batches of 5)
       const uniqueVats = [...new Set(hasVat.map(o => o.CounterParty.VATNumber!))];
       const peppolMap = new Map<string, boolean>();
+      const peppolLookupErrors = new Map<string, string>();
       await batchAll(
         uniqueVats.map(vat => () =>
           client.request<PeppolLookupResponse>("GET", `/v1/peppol/participantInformation/${vat}`)
             .then(r => { peppolMap.set(vat, r?.Registered ?? false); })
-            .catch(() => { peppolMap.set(vat, false); })
+            .catch((e: unknown) => { peppolMap.set(vat, false); peppolLookupErrors.set(vat, e instanceof Error ? e.message : "lookup failed"); })
         )
       );
 
-      // 4. Split into Peppol-eligible vs not
+      // 4. Split into Peppol-eligible / not on Peppol / lookup failed
       const notOnPeppolOrders: Order[] = [];
       const peppolEligible: Order[] = [];
+      const lookupFailedOrders: Order[] = [];
       for (const order of hasVat) {
         const vat = order.CounterParty.VATNumber!;
-        if (peppolMap.get(vat)) peppolEligible.push(order);
+        if (peppolLookupErrors.has(vat)) lookupFailedOrders.push(order);
+        else if (peppolMap.get(vat)) peppolEligible.push(order);
         else notOnPeppolOrders.push(order);
       }
 
@@ -253,6 +261,13 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
         customer: o.CounterParty.DisplayName,
       }));
 
+      // Deduplicate lookup-failed VATs for the report
+      const failedVats = [...new Set(lookupFailedOrders.map(o => o.CounterParty.VATNumber!))];
+      const lookupFailed = failedVats.map(vat => {
+        const orders = lookupFailedOrders.filter(o => o.CounterParty.VATNumber === vat);
+        return { vat, customer: orders[0].CounterParty.DisplayName, invoiceCount: orders.length, error: peppolLookupErrors.get(vat)! };
+      });
+
       const result = {
         summary: {
           period_from: fromDate,
@@ -261,10 +276,12 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
           sent_via_peppol: sentViaPeppol.length,
           on_peppol_not_sent: onPeppolNotSent.length,
           not_on_peppol: notOnPeppol.length,
+          lookup_failed: lookupFailed.length,
         },
         sent_via_peppol: sentViaPeppol,
         on_peppol_not_sent: onPeppolNotSent,
         not_on_peppol: notOnPeppol,
+        ...(lookupFailed.length > 0 ? { lookup_failed: lookupFailed } : {}),
       };
 
       return respond(JSON.stringify(result, null, 2));
