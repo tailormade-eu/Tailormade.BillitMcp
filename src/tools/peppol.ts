@@ -25,9 +25,13 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
     "Accept an incoming Peppol message. Marks the item as processed and accepted. Use after reviewing an incoming e-invoice.",
     {
       inbox_item_id: z.string().describe("Inbox item ID from billit_peppol_list_inbox result"),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ inbox_item_id, company_id }) => {
+    async ({ inbox_item_id, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Confirm Peppol inbox item ${inbox_item_id}` }, null, 2));
+      }
       const data = await client.request("POST", `/v1/peppol/inbox/${inbox_item_id}/confirm`, undefined, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
@@ -38,9 +42,13 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
     "Refuse/reject an incoming Peppol message. Use when an incoming e-invoice is incorrect or unexpected.",
     {
       inbox_item_id: z.string().describe("Inbox item ID from billit_peppol_list_inbox result"),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ inbox_item_id, company_id }) => {
+    async ({ inbox_item_id, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Refuse Peppol inbox item ${inbox_item_id}` }, null, 2));
+      }
       const data = await client.request("POST", `/v1/peppol/inbox/${inbox_item_id}/refuse`, undefined, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
@@ -82,8 +90,14 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_peppol_register",
     "Register the current Billit party as a Peppol participant. Enables receiving e-invoices via Peppol and sending outgoing invoices via the network. One-time setup operation.",
-    { company_id: companyId },
-    async ({ company_id }) => {
+    {
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
+      company_id: companyId,
+    },
+    async ({ dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: "Register party as Peppol participant" }, null, 2));
+      }
       const data = await client.request("POST", "/v1/peppol/participants", undefined, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },

@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { buildODataParams, companyId, respond, withLlmTip } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerDocumentTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -45,9 +45,13 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
       file_base64: z.string().describe("Base64-encoded file content"),
       file_name: z.string().describe("File name including extension (e.g. 'invoice-2026-001.pdf')"),
       content_type: z.string().optional().describe("MIME type (default: 'application/pdf'). Other common values: 'image/jpeg', 'image/png'"),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ file_base64, file_name, content_type, company_id }) => {
+    async ({ file_base64, file_name, content_type, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Upload document '${file_name}' (${content_type ?? "application/pdf"})` }, null, 2));
+      }
       const body: Record<string, unknown> = {
         FileBase64: file_base64, FileName: file_name, ContentType: content_type ?? "application/pdf",
       };

@@ -150,8 +150,14 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   server.tool(
     "billit_register_accountant_feed",
     "Register a new accountant feed. All newly exported orders and documents will appear in this feed for the accountant to download. One-time setup per accountant integration.",
-    { company_id: companyId },
-    async ({ company_id }) => {
+    {
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
+      company_id: companyId,
+    },
+    async ({ dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: "Register new accountant feed" }, null, 2));
+      }
       const data = await client.request("POST", "/v1/accountant/feeds", undefined, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
@@ -167,9 +173,13 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
     {
       feed_item_ids: z.array(z.string())
         .describe("Array of feed item ID strings to confirm as downloaded. Get these from billit_list_accountant_feeds response."),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ feed_item_ids, company_id }) => {
+    async ({ feed_item_ids, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Confirm ${feed_item_ids.length} accountant feed item(s)` }, null, 2));
+      }
       const data = await client.request("POST", "/v1/accountant/feeds/confirm", { FeedItemIds: feed_item_ids }, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
