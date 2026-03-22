@@ -32,7 +32,7 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
       if (dry_run) {
         return respond(JSON.stringify({ dry_run: true, would: `Confirm Peppol inbox item ${inbox_item_id}` }, null, 2));
       }
-      const data = await client.request("POST", `/v1/peppol/inbox/${inbox_item_id}/confirm`, undefined, company_id);
+      const data = await client.request("POST", `/v1/peppol/inbox/${encodeURIComponent(inbox_item_id)}/confirm`, undefined, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
   );
@@ -49,7 +49,7 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
       if (dry_run) {
         return respond(JSON.stringify({ dry_run: true, would: `Refuse Peppol inbox item ${inbox_item_id}` }, null, 2));
       }
-      const data = await client.request("POST", `/v1/peppol/inbox/${inbox_item_id}/refuse`, undefined, company_id);
+      const data = await client.request("POST", `/v1/peppol/inbox/${encodeURIComponent(inbox_item_id)}/refuse`, undefined, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
   );

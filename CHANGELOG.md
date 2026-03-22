@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.2] - 2026-03-22
+
+### Fixed
+- OData injection in `paginateOrders` — added YYYY-MM-DD format validation on `fromDate` param (CR-roundup)
+- `inbox_item_id` not URL-encoded in Peppol confirm/refuse paths — added `encodeURIComponent()` (CR-roundup)
+- `parseInt` NaN on invalid BILLIT_PARTY_ID — added `Number.isNaN()` guard with stderr warning (Task 25, CR20)
+- Duplicate pagination loops in workflows.ts — extracted `paginateOrders()` to utils.ts (Task 25, W9)
+- Unbounded error response body in client.ts — truncated to 2000 chars (Task 25, W10)
+- VAT not URL-encoded in workflows.ts Peppol lookup URLs — added `encodeURIComponent()` (Task 24, CR19)
+
+### Added
+- `dry_run` on 6 remaining write tools: upload_document, peppol_confirm/refuse_inbox, peppol_register, register/confirm_accountant_feed (Task 23, CR18)
+
 ## [1.1.1] - 2026-03-22
 
 ### Fixed
@@ -55,3 +68,8 @@
 - OData filtering on list endpoints (`$filter`, `$orderby`, `$top`, `$skip`)
 - Full-text search via `fullTextSearch` query param (separate from OData)
 - `npm run check-coverage` script to verify tool coverage vs INDEX.md
+
+## [1.1.2] - 2026-03-22
+
+---
+

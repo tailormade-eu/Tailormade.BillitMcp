@@ -23,6 +23,9 @@ export async function paginateOrders(
   companyId?: number,
   maxPages = 100,
 ): Promise<{ OrderID: number; OrderNumber: string; OrderDate: string; TotalIncl: number; CounterParty: { DisplayName: string; VATNumber?: string } }[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) {
+    throw new Error(`Invalid fromDate format: '${fromDate}'. Expected YYYY-MM-DD.`);
+  }
   const pageSize = 120;
   const allOrders: { OrderID: number; OrderNumber: string; OrderDate: string; TotalIncl: number; CounterParty: { DisplayName: string; VATNumber?: string } }[] = [];
   let skip = 0;
