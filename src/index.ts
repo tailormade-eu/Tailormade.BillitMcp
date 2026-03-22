@@ -23,10 +23,17 @@ function getRequiredEnv(name: string): string {
 
 async function main(): Promise<void> {
   const apiKey = getRequiredEnv("BILLIT_API_KEY");
-  const partyId = process.env["BILLIT_PARTY_ID"] ? parseInt(process.env["BILLIT_PARTY_ID"], 10) : 0;
-  const contextPartyId = process.env["BILLIT_CONTEXT_PARTY_ID"]
-    ? parseInt(process.env["BILLIT_CONTEXT_PARTY_ID"], 10)
-    : undefined;
+  const rawPartyId = parseInt(process.env["BILLIT_PARTY_ID"] ?? "", 10);
+  if (process.env["BILLIT_PARTY_ID"] && Number.isNaN(rawPartyId)) {
+    console.error(`Warning: BILLIT_PARTY_ID="${process.env["BILLIT_PARTY_ID"]}" is not a valid number, falling back to 0`);
+  }
+  const partyId = Number.isNaN(rawPartyId) ? 0 : rawPartyId;
+
+  const rawContextPartyId = parseInt(process.env["BILLIT_CONTEXT_PARTY_ID"] ?? "", 10);
+  if (process.env["BILLIT_CONTEXT_PARTY_ID"] && Number.isNaN(rawContextPartyId)) {
+    console.error(`Warning: BILLIT_CONTEXT_PARTY_ID="${process.env["BILLIT_CONTEXT_PARTY_ID"]}" is not a valid number, ignoring`);
+  }
+  const contextPartyId = Number.isNaN(rawContextPartyId) ? undefined : rawContextPartyId;
 
   const client = new BillitClient({ apiKey, partyId, contextPartyId });
 
@@ -44,5 +51,10 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+  process.exit(1);
+});
 
 main().catch((err) => { console.error(err); process.exit(1); });

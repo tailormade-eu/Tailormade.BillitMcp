@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerDocumentTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -16,13 +16,7 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ filter, orderby, search, top, skip, company_id }) => {
-      const params = new URLSearchParams();
-      if (filter) params.set("$filter", filter);
-      if (orderby) params.set("$orderby", orderby);
-      if (search) params.set("fullTextSearch", search);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/documents${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -43,14 +37,21 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_upload_document",
-    "Upload a document to Billit (e.g. an incoming invoice PDF for processing). Returns the created DocumentID. Next step: billit_submit_for_processing to have Billit parse the document.\n\nNOTE: file_base64 must be a base64-encoded string of the file content. EXAMPLE: for a PDF, encode the raw bytes as base64. Max file size depends on Billit account settings.",
+    withLlmTip(
+      "Upload a document to Billit (e.g. an incoming invoice PDF for processing). Returns the created DocumentID. Next step: billit_submit_for_processing to have Billit parse the document.",
+      "file_base64 must be a base64-encoded string of the file content (raw bytes → base64). Max file size depends on Billit account settings."
+    ),
     {
       file_base64: z.string().describe("Base64-encoded file content"),
       file_name: z.string().describe("File name including extension (e.g. 'invoice-2026-001.pdf')"),
       content_type: z.string().optional().describe("MIME type (default: 'application/pdf'). Other common values: 'image/jpeg', 'image/png'"),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ file_base64, file_name, content_type, company_id }) => {
+    async ({ file_base64, file_name, content_type, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Upload document '${file_name}' (${content_type ?? "application/pdf"})` }, null, 2));
+      }
       const body: Record<string, unknown> = {
         FileBase64: file_base64, FileName: file_name, ContentType: content_type ?? "application/pdf",
       };
@@ -61,7 +62,10 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_download_file",
-    "Download a file by its UUID. File UUIDs are found in order responses (PDF of the invoice), document responses, or accountant feed items. Returns base64-encoded file content.\n\nCRITICAL: This endpoint uses a UUID (string like 'a1b2c3d4-...'), NOT a numeric ID. The fileID comes from order/document response fields, not from the DocumentID. Do not confuse DocumentID (numeric) with fileID (UUID).",
+    withLlmTip(
+      "Download a file by its UUID. File UUIDs are found in order responses (PDF of the invoice), document responses, or accountant feed items. Returns base64-encoded file content.",
+      "ERROR: 404 on download → CAUSE: passing numeric DocumentID instead of UUID fileID → FIX: use the UUID string (e.g. 'a1b2c3d4-...') from order/document response fields, NOT the numeric DocumentID."
+    ),
     {
       file_id: z.string().describe("File UUID (e.g. 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'). Found in order or document response fields. This is NOT the numeric DocumentID."),
       company_id: companyId,

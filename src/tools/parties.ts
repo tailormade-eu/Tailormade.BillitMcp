@@ -1,12 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerPartyTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_list_parties",
-    "List parties (customers and/or suppliers) in Billit. Returns array with PartyID, CommercialName, VATNumber, Email, PartyType. Supports OData $filter, $orderby, full-text search. Next steps: billit_get_party for full details, billit_create_order to create an invoice for a party.\n\nEXAMPLES:\n- filter=\"PartyType eq 'Customer'\"\n- filter=\"DisplayName eq 'Acme NV'\"\n- orderby='CommercialName asc'\n\nNOTE: fullTextSearch is a separate param — do NOT put it in OData $filter. NOTE: PartyName/DisplayName may be empty in list responses — use billit_get_party to retrieve the full party name.",
+    withLlmTip(
+      "List parties (customers and/or suppliers) in Billit. Returns array with PartyID, CommercialName, VATNumber, Email, PartyType. Supports OData $filter, $orderby, full-text search. Next steps: billit_get_party for full details, billit_create_order to create an invoice for a party.\n\nEXAMPLES:\n- filter=\"PartyType eq 'Customer'\"\n- filter=\"DisplayName eq 'Acme NV'\"\n- orderby='CommercialName asc'",
+      "ERROR: fullTextSearch in $filter → CAUSE: fullTextSearch is a separate query param → FIX: pass as 'fullTextSearch' param, not inside $filter.\nPartyName/DisplayName may be empty in list responses — use billit_get_party to retrieve the full party name."
+    ),
     {
       party_type: z.enum(["Customer", "Supplier", "Both"]).optional().describe("Shortcut filter by party type. Equivalent to filter=\"PartyType eq '...'\"."),
       filter: z.string().optional().describe("OData $filter expression. Examples: \"DisplayName eq 'Acme NV'\", \"PartyType eq 'Customer'\". NOTE: If you also provide party_type, it will be merged with AND unless your filter already contains a PartyType condition."),
@@ -18,17 +21,11 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
     },
     async ({ party_type, filter, orderby, search, top, skip, company_id }) => {
       const filters: string[] = [];
-      if (party_type && !(filter && /PartyType/i.test(filter))) {
+      if (party_type && !(filter && /PartyType\s+eq\b/i.test(filter))) {
         filters.push(`PartyType eq '${party_type}'`);
       }
       if (filter) filters.push(filter);
-      const params = new URLSearchParams();
-      if (filters.length) params.set("$filter", filters.join(" and "));
-      if (orderby) params.set("$orderby", orderby);
-      if (search) params.set("fullTextSearch", search);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter: filters.length ? filters.join(" and ") : undefined, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/parties${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -49,7 +46,10 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_create_party",
-    "Create a new customer or supplier party in Billit. Use billit_search_company first to auto-fill company details from KBO/VAT lookup. Returns the created PartyID. Next steps: billit_create_order to create an invoice for this party.\n\nNOTE: Use billit_search_company with the company VAT/KBO number to look up official company data (name, address) before creating. This avoids typos and ensures correct data.",
+    withLlmTip(
+      "Create a new customer or supplier party in Billit. Use billit_search_company first to auto-fill company details from KBO/VAT lookup. Returns the created PartyID. Next steps: billit_create_order to create an invoice for this party.",
+      "Use billit_search_company with the company VAT/KBO number to look up official company data (name, address) before creating. This avoids typos and ensures correct data."
+    ),
     {
       commercial_name: z.string().describe("Company or person name (required)"),
       party_type: z.enum(["Customer", "Supplier", "Both"]).optional().describe("'Customer', 'Supplier', or 'Both' (default: Customer)"),
@@ -67,6 +67,7 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
       city: z.string().optional().describe("City name"),
       country_code: z.string().optional().describe("ISO country code (default: BE)"),
       address_type: z.enum(["InvoiceAddress", "DeliveryAddress"]).optional().describe("Address type: 'InvoiceAddress' (default) or 'DeliveryAddress'"),
+      dry_run: coerceBool.describe("When true, validates input and returns what would be created without calling the API (default: false)"),
       company_id: companyId,
     },
     async (params) => {
@@ -92,6 +93,9 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
           CountryCode: params.country_code ?? "BE",
         }];
       }
+      if (params.dry_run) {
+        return respond(`Dry run: would create party '${params.commercial_name}' (${params.party_type ?? "Customer"}). No changes made.`);
+      }
       const data = await client.request("POST", "/v1/parties", body, params.company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -109,9 +113,10 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
       language: z.enum(["NL", "FR", "EN", "DE"]).optional().describe("Updated language: NL, FR, EN, or DE"),
       iban: z.string().optional().describe("Updated IBAN"),
       bic: z.string().optional().describe("Updated BIC/SWIFT"),
+      dry_run: coerceBool.describe("When true, returns what would be updated without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ party_id, commercial_name, vat_number, email, phone, language, iban, bic, company_id }) => {
+    async ({ party_id, commercial_name, vat_number, email, phone, language, iban, bic, dry_run, company_id }) => {
       const body: Record<string, unknown> = {};
       if (commercial_name !== undefined) body.CommercialName = commercial_name;
       if (vat_number !== undefined) body.VATNumber = vat_number;
@@ -120,6 +125,9 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
       if (language !== undefined) body.Language = language;
       if (iban !== undefined) body.IBAN = iban;
       if (bic !== undefined) body.BIC = bic;
+      if (dry_run) {
+        return respond(`Dry run: would update party ${party_id} with ${JSON.stringify(body)}. No changes made.`);
+      }
       const data = await client.request("PATCH", `/v1/parties/${party_id}`, body, company_id);
       return respond(JSON.stringify(data, null, 2));
     },

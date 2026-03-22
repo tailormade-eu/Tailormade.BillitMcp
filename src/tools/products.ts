@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerProductTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -16,13 +16,7 @@ export function registerProductTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ filter, orderby, search, top, skip, company_id }) => {
-      const params = new URLSearchParams();
-      if (filter) params.set("$filter", filter);
-      if (orderby) params.set("$orderby", orderby);
-      if (search) params.set("fullTextSearch", search);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/products${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -43,21 +37,28 @@ export function registerProductTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_create_product",
-    "Create a new product in the Billit catalog, or update an existing product if one with the same reference already exists. Use to maintain a reusable product list for order lines.\n\nNOTE: If a product with the same 'reference' already exists, this acts as an upsert (update). Use a unique reference code to distinguish products.",
+    withLlmTip(
+      "Create a new product in the Billit catalog, or update an existing product if one with the same reference already exists. Use to maintain a reusable product list for order lines.",
+      "If a product with the same 'reference' already exists, this acts as an upsert (update). Use a unique reference code to distinguish products."
+    ),
     {
       description: z.string().describe("Product or service description (required)"),
       reference: z.string().optional().describe("Unique product reference/SKU code. If a product with this reference exists, it will be updated."),
       unit_price: z.coerce.number().optional().describe("Default unit price (excl. VAT) as decimal"),
       vat_percentage: z.coerce.number().optional().describe("VAT percentage as number (e.g. 21 for 21%, 0 for VAT exempt)"),
       unit: z.string().optional().describe("Unit of measure (e.g. 'piece', 'hour', 'kg')"),
+      dry_run: coerceBool.describe("When true, validates input and returns what would be created without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ description, reference, unit_price, vat_percentage, unit, company_id }) => {
+    async ({ description, reference, unit_price, vat_percentage, unit, dry_run, company_id }) => {
       const body: Record<string, unknown> = { Description: description };
       if (reference !== undefined) body.Reference = reference;
       if (unit_price !== undefined) body.UnitPrice = unit_price;
       if (vat_percentage !== undefined) body.VATPercentage = vat_percentage;
       if (unit !== undefined) body.Unit = unit;
+      if (dry_run) {
+        return respond(`Dry run: would create product '${description}'${reference ? ` (ref: ${reference})` : ""}. No changes made.`);
+      }
       const data = await client.request("POST", "/v1/products", body, company_id);
       return respond(JSON.stringify(data, null, 2));
     },

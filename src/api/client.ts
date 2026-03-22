@@ -15,24 +15,25 @@ export class BillitClient {
       "Content-Type": "application/json",
       "ApiKey": config.apiKey,
     };
-    if (config.partyId) {
+    if (config.partyId !== undefined && config.partyId !== 0) {
       this.headers["PartyID"] = String(config.partyId);
     }
-    if (config.contextPartyId) {
+    if (config.contextPartyId !== undefined && config.contextPartyId !== 0) {
       this.headers["ContextPartyID"] = String(config.contextPartyId);
     }
   }
 
   async request<T>(method: string, path: string, body?: unknown, partyIdOverride?: number): Promise<T> {
     const headers = { ...this.headers };
-    if (partyIdOverride) headers["PartyID"] = String(partyIdOverride);
+    if (partyIdOverride !== undefined) headers["PartyID"] = String(partyIdOverride);
     const res = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const raw = await res.text().catch(() => "");
+      const text = raw.length > 2000 ? raw.slice(0, 2000) + `… [truncated, ${raw.length} chars total]` : raw;
       throw new Error(`Billit ${res.status} ${method} ${path}: ${text}`);
     }
     if (res.status === 204) return undefined as T;

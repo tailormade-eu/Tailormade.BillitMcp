@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerFinancialTools(server: McpServer, client: BillitClient) {
   // ── billit_get_account_info ───────────────────────────────────────
@@ -46,12 +46,15 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_list_financial_transactions ─────────────────────────────
   server.tool(
     "billit_list_financial_transactions",
-    "List financial transactions in Billit (bank transactions, payments). Use to reconcile payments with orders. Supports full-text search, OData $filter and $orderby.\n\nEXAMPLES:\n- Recent first: orderby='ValueDate desc'\n- Date range: filter=\"ValueDate ge datetime'2026-01-01T00:00:00' and ValueDate le datetime'2026-03-31T23:59:59'\"\n- By counterparty: filter=\"NameCounterParty eq 'Mehmet'\"\n- Combined: orderby='ValueDate desc', filter=\"ValueDate ge datetime'2026-01-01T00:00:00'\"\n\nNOTE: max page size is 120. Date filter requires datetime'' syntax.",
+    withLlmTip(
+      "List financial transactions in Billit (bank transactions, payments). Use to reconcile payments with orders. Supports full-text search, OData $filter and $orderby.\n\nEXAMPLES:\n- Recent first: orderby='ValueDate desc'\n- Date range: filter=\"ValueDate ge datetime'2026-01-01T00:00:00' and ValueDate le datetime'2026-03-31T23:59:59'\"\n- By counterparty: filter=\"NameCounterParty eq 'Acme Corp'\"\n- Combined: orderby='ValueDate desc', filter=\"ValueDate ge datetime'2026-01-01T00:00:00'\"",
+      "Max page size is 120. Date filter requires datetime'' syntax."
+    ),
     {
       search: z.string().optional()
         .describe("Full-text search on transaction description, reference, or amount"),
       filter: z.string().optional()
-        .describe("OData $filter expression. Date syntax requires datetime'': \"ValueDate ge datetime'2026-01-01T00:00:00'\". Other examples: \"NameCounterParty eq 'Mehmet Eryilmaz'\", \"TotalAmount ge 500\""),
+        .describe("OData $filter expression. Date syntax requires datetime'': \"ValueDate ge datetime'2026-01-01T00:00:00'\". Other examples: \"NameCounterParty eq 'Acme Corp'\", \"TotalAmount ge 500\""),
       orderby: z.string().optional()
         .describe("OData $orderby expression. Examples: 'ValueDate desc', 'TotalAmount desc', 'ValueDate asc'"),
       top: z.coerce.number().optional()
@@ -61,13 +64,7 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
       company_id: companyId,
     },
     async ({ search, filter, orderby, top, skip, company_id }) => {
-      const params = new URLSearchParams();
-      if (search) params.set("fullTextSearch", search);
-      if (filter) params.set("$filter", filter);
-      if (orderby) params.set("$orderby", orderby);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/financialTransactions${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -76,17 +73,24 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_import_financial_transactions ───────────────────────────
   server.tool(
     "billit_import_financial_transactions",
-    "Import bank transactions from a CODA or MT940 bank statement file. Use to bulk-import bank transactions for payment reconciliation.\n\nNOTE: Supported formats are CODA (Belgian bank format) and MT940 (SWIFT bank format). file_base64 must be base64-encoded file content.",
+    withLlmTip(
+      "Import bank transactions from a CODA or MT940 bank statement file. Use to bulk-import bank transactions for payment reconciliation.",
+      "Supported formats: CODA (Belgian bank format) and MT940 (SWIFT bank format). file_base64 must be base64-encoded file content."
+    ),
     {
       file_base64: z.string()
         .describe("Base64-encoded CODA or MT940 bank statement file content"),
       file_name: z.string()
         .describe("File name (e.g. 'statement-2026-01.coda' or 'statement.mt940')"),
-      content_type: z.string()
-        .describe("MIME type of the file"),
+      content_type: z.string().optional()
+        .describe("MIME type of the file (e.g. 'application/octet-stream'). Auto-detected from file_name if omitted."),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ file_base64, file_name, content_type, company_id }) => {
+    async ({ file_base64, file_name, content_type, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Import financial transactions from '${file_name}'` }, null, 2));
+      }
       const body = { FileBase64: file_base64, FileName: file_name, ContentType: content_type };
       const data = await client.request("POST", "/v1/financialTransactions/commands/import", body, company_id);
       return respond(JSON.stringify(data, null, 2));
@@ -107,11 +111,7 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
       company_id: companyId,
     },
     async ({ orderby, top, skip, company_id }) => {
-      const params = new URLSearchParams();
-      if (orderby) params.set("$orderby", orderby);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ orderby, top, skip });
       const data = await client.request("GET", `/v1/reports${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -135,7 +135,10 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_list_accountant_feeds ──────────────────────────────────
   server.tool(
     "billit_list_accountant_feeds",
-    "List all accountant feeds and their pending items. Feeds contain newly exported orders and documents for accountant processing. Poll at most once per minute. Next steps: billit_download_accountant_file to download items, billit_confirm_accountant_feed to confirm processed items.\n\nWARNING: Do not poll more than once per minute — this is a rate-limited endpoint. After downloading feed items, always confirm them with billit_confirm_accountant_feed to remove them from the feed.",
+    withLlmTip(
+      "List all accountant feeds and their pending items. Feeds contain newly exported orders and documents for accountant processing. Poll at most once per minute. Next steps: billit_download_accountant_file to download items, billit_confirm_accountant_feed to confirm processed items.",
+      "ERROR: rate limit hit → CAUSE: polling more than once per minute → FIX: wait at least 60s between calls.\nAfter downloading feed items, always confirm them with billit_confirm_accountant_feed to remove them from the feed."
+    ),
     { company_id: companyId },
     async ({ company_id }) => {
       const data = await client.request("GET", "/v1/accountant/feeds", undefined, company_id);
@@ -147,8 +150,14 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   server.tool(
     "billit_register_accountant_feed",
     "Register a new accountant feed. All newly exported orders and documents will appear in this feed for the accountant to download. One-time setup per accountant integration.",
-    { company_id: companyId },
-    async ({ company_id }) => {
+    {
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
+      company_id: companyId,
+    },
+    async ({ dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: "Register new accountant feed" }, null, 2));
+      }
       const data = await client.request("POST", "/v1/accountant/feeds", undefined, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
@@ -157,13 +166,20 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_confirm_accountant_feed ────────────────────────────────
   server.tool(
     "billit_confirm_accountant_feed",
-    "Confirm that feed items have been successfully downloaded. This removes them from the feed list. Always call this after processing items from billit_list_accountant_feeds.\n\nCRITICAL: Always confirm downloaded items — without confirmation, the same items will reappear on the next poll. Pass the feed item IDs from the billit_list_accountant_feeds response.",
+    withLlmTip(
+      "Confirm that feed items have been successfully downloaded. This removes them from the feed list. Always call this after processing items from billit_list_accountant_feeds.",
+      "ERROR: duplicate items on next poll → CAUSE: items not confirmed after download → FIX: always call this after downloading feed items, passing the feed item IDs from billit_list_accountant_feeds response."
+    ),
     {
       feed_item_ids: z.array(z.string())
         .describe("Array of feed item ID strings to confirm as downloaded. Get these from billit_list_accountant_feeds response."),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ feed_item_ids, company_id }) => {
+    async ({ feed_item_ids, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Confirm ${feed_item_ids.length} accountant feed item(s)` }, null, 2));
+      }
       const data = await client.request("POST", "/v1/accountant/feeds/confirm", { FeedItemIds: feed_item_ids }, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },

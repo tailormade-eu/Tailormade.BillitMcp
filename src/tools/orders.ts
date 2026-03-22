@@ -1,14 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
-
-const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerOrderTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_list_orders",
-    "List orders from Billit. Returns paginated array of orders (invoices, credit notes, offers). Use direction='Income' for outgoing (sales) orders, direction='Cost' for incoming (purchase) orders. Supports OData filtering and full-text search. Next steps: billit_get_order for full details including order lines, billit_confirm_order to approve, billit_register_payment when paid.\n\nWARNING: OrderDirection 'Income' means money coming IN (= outgoing invoices you send to customers). OrderDirection 'Cost' means money going OUT (= incoming invoices from suppliers). This is counter-intuitive. NOTE: fullTextSearch is a separate query param — do NOT put it in the OData $filter. OData date filter syntax: LastModified ge datetime'2026-01-01T00:00:00'. NOTE: PartyName may be empty in list responses — use billit_get_order for full party/supplier details.",
+    withLlmTip(
+      "List orders from Billit. Returns paginated array of orders (invoices, credit notes, offers). Use direction='Income' for outgoing (sales) orders, direction='Cost' for incoming (purchase) orders. Supports OData filtering and full-text search. Next steps: billit_get_order for full details including order lines, billit_confirm_order to approve, billit_register_payment when paid.",
+      "OrderDirection naming is counter-intuitive: 'Income' = outgoing invoices you send to customers, 'Cost' = incoming invoices from suppliers.\nERROR: fullTextSearch in $filter → CAUSE: fullTextSearch is a separate query param → FIX: pass as 'fullTextSearch' param, not inside $filter.\nOData date filter syntax: LastModified ge datetime'2026-01-01T00:00:00'.\nPartyName may be empty in list responses — use billit_get_order for full party/supplier details."
+    ),
     {
       direction: z.enum(["Income", "Cost"]).optional()
         .describe("Filter by order direction: 'Income' = outgoing sales invoices (money coming in), 'Cost' = incoming purchase invoices (money going out)"),
@@ -33,16 +34,15 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       const filters: string[] = [];
       if (direction) filters.push(`OrderDirection eq '${direction}'`);
       if (order_type) filters.push(`OrderType eq '${order_type}'`);
-      if (modified_after) filters.push(`LastModified ge datetime'${modified_after}'`);
+      if (modified_after) {
+        if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(modified_after)) {
+          return respond("Error: modified_after must be ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)");
+        }
+        filters.push(`LastModified ge datetime'${modified_after}'`);
+      }
       if (approval_status) filters.push(`ApprovalStatus eq '${approval_status}'`);
       if (paid !== undefined) filters.push(`Paid eq ${paid}`);
-      const params = new URLSearchParams();
-      if (filters.length) params.set("$filter", filters.join(" and "));
-      if (search) params.set("fullTextSearch", search);
-      if (orderby) params.set("$orderby", orderby);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter: filters.length ? filters.join(" and ") : undefined, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/orders${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -63,7 +63,10 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_create_order",
-    "Create a new order (invoice or credit note) in Billit. For outgoing sales invoices use order_direction='Income'. For incoming purchase invoices use order_direction='Cost'. Returns the created order ID. Next steps: billit_confirm_order to set ApprovalStatus=approved, billit_send_order to email/Peppol.\n\nNOTE: 'lines' parameter must be a JSON string containing an array: '[{\"description\":\"Service\",\"quantity\":1,\"unit_price_excl\":100,\"vat_percentage\":21}]'. EXAMPLE: to create a sales invoice for customer BE0123456789, use order_direction='Income', order_type='Invoice'.",
+    withLlmTip(
+      "Create a new order (invoice or credit note) in Billit. For outgoing sales invoices use order_direction='Income'. For incoming purchase invoices use order_direction='Cost'. Returns the created order ID. Next steps: billit_confirm_order to set ApprovalStatus=approved, billit_send_order to email/Peppol.",
+      "ERROR: lines param not parsed → CAUSE: must be a JSON string array → FIX: pass '[{\"description\":\"Service\",\"quantity\":1,\"unit_price_excl\":100,\"vat_percentage\":21}]'.\nExample: sales invoice for BE0123456789 → order_direction='Income', order_type='Invoice'."
+    ),
     {
       order_type: z.enum(["Invoice", "CreditNote"]).describe("'Invoice' or 'CreditNote'"),
       order_direction: z.enum(["Income", "Cost"]).describe("'Income' = outgoing sales invoice (you send to customer), 'Cost' = incoming purchase invoice (from supplier)"),
@@ -82,6 +85,7 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       payment_reference: z.string().optional().describe("Structured payment reference (e.g. +++084/2613/66074+++)"),
       currency: z.string().optional().describe("Currency code (default: EUR)"),
       lines: z.string().describe("JSON string array of order lines: [{\"description\": \"...\", \"quantity\": 1, \"unit_price_excl\": 100.0, \"vat_percentage\": 21}]"),
+      dry_run: coerceBool.describe("When true, validates input and returns what would be created without calling the API (default: false)"),
       company_id: companyId,
     },
     async (params) => {
@@ -124,6 +128,9 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
         ...(params.payment_reference && { PaymentReference: params.payment_reference }),
         ...(params.currency && { Currency: params.currency }),
       };
+      if (params.dry_run) {
+        return respond(`Dry run: would create ${params.order_type} (${params.order_direction}) for ${params.customer_name}. No changes made.`);
+      }
       const data = await client.request("POST", "/v1/orders", body, params.company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -131,7 +138,10 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_update_order",
-    "Update a limited set of fields on an existing order: payment status, send status, approval status, internal info, account code, export flags. Only include fields you want to change — absent fields are not modified.\n\nNOTE: Only fields present in the request are updated. To mark an order as paid, provide both paid=true and paid_date. To approve use billit_confirm_order (shortcut) or set approval_status='approved' here.",
+    withLlmTip(
+      "Update a limited set of fields on an existing order: payment status, send status, approval status, internal info, account code, export flags. Only include fields you want to change — absent fields are not modified.",
+      "Only fields present in the request are updated. To mark as paid, provide both paid=true and paid_date. To approve use billit_confirm_order (shortcut) or set approval_status='approved' here."
+    ),
     {
       order_id: z.coerce.number().describe("Numeric order ID to update"),
       paid: coerceBool.describe("Set to true to mark order as paid"),
@@ -142,9 +152,10 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       account_code: z.string().optional().describe("Accounting code for bookkeeping export"),
       invoiced: coerceBool.describe("Mark as invoiced (for offers)"),
       exported_to_connector: coerceBool.describe("Mark as exported to external accounting connector"),
+      dry_run: coerceBool.describe("When true, returns what would be updated without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, paid, paid_date, is_sent, approval_status, internal_info, account_code, invoiced, exported_to_connector, company_id }) => {
+    async ({ order_id, paid, paid_date, is_sent, approval_status, internal_info, account_code, invoiced, exported_to_connector, dry_run, company_id }) => {
       const body: Record<string, unknown> = {};
       if (paid !== undefined) body.Paid = paid;
       if (paid_date !== undefined) body.PaidDate = paid_date;
@@ -154,6 +165,9 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       if (account_code !== undefined) body.AccountCode = account_code;
       if (invoiced !== undefined) body.Invoiced = invoiced;
       if (exported_to_connector !== undefined) body.ExportedToConnector = exported_to_connector;
+      if (dry_run) {
+        return respond(`Dry run: would update order ${order_id} with ${JSON.stringify(body)}. No changes made.`);
+      }
       const data = await client.request("PATCH", `/v1/orders/${order_id}`, body, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -164,9 +178,13 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
     "Shortcut to approve an order for Billit processing. Sets ApprovalStatus to 'approved'. Required before Billit will process/send the invoice. Equivalent to billit_update_order with approval_status='approved'.",
     {
       order_id: z.coerce.number().describe("Numeric order ID to approve"),
+      dry_run: coerceBool.describe("When true, returns what would happen without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, company_id }) => {
+    async ({ order_id, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(`Dry run: would confirm (approve) order ${order_id}. No changes made.`);
+      }
       const data = await client.request("PATCH", `/v1/orders/${order_id}`, { ApprovalStatus: "approved" }, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -197,11 +215,15 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       amount: z.coerce.number().describe("Payment amount as decimal (e.g. 121.00)"),
       payment_date: z.string().describe("Date payment was received (YYYY-MM-DD)"),
       payment_reference: z.string().optional().describe("Payment reference or bank transaction ID"),
+      dry_run: coerceBool.describe("When true, returns what would be registered without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, amount, payment_date, payment_reference, company_id }) => {
+    async ({ order_id, amount, payment_date, payment_reference, dry_run, company_id }) => {
       const body: Record<string, unknown> = { Amount: amount, PaymentDate: payment_date };
       if (payment_reference) body.PaymentReference = payment_reference;
+      if (dry_run) {
+        return respond(`Dry run: would register payment of ${amount} on order ${order_id} for ${payment_date}. No changes made.`);
+      }
       const data = await client.request("POST", `/v1/orders/${order_id}/payments`, body, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -209,12 +231,19 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_send_order",
-    "Send one or more orders to the customer via email or Peppol (depending on customer configuration). Returns immediately — delivery is async. Prerequisites: order must be confirmed (ApprovalStatus=approved). Use billit_peppol_lookup_participant first to check if customer is on Peppol.\n\nNOTE: Sending method (email vs Peppol) is determined by Billit based on customer configuration. To force Peppol, use billit_peppol_send_order instead. CRITICAL: order must have ApprovalStatus='approved' before sending — use billit_confirm_order first.",
+    withLlmTip(
+      "Send one or more orders to the customer via email or Peppol (depending on customer configuration). Returns immediately — delivery is async. Prerequisites: order must be confirmed (ApprovalStatus=approved). Use billit_peppol_lookup_participant first to check if customer is on Peppol.",
+      "Sending method (email vs Peppol) is determined by Billit based on customer config. To force Peppol, use billit_peppol_send_order instead.\nERROR: send fails → CAUSE: order not approved → FIX: call billit_confirm_order first to set ApprovalStatus='approved'."
+    ),
     {
       order_ids: z.array(z.number()).describe("Array of numeric order IDs to send (can send multiple at once)"),
+      dry_run: coerceBool.describe("When true, returns what would be sent without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ order_ids, company_id }) => {
+    async ({ order_ids, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(`Dry run: would send order(s) ${order_ids.join(", ")}. No changes made.`);
+      }
       const data = await client.request("POST", "/v1/orders/commands/send", { OrderIDs: order_ids }, company_id);
       return respond(JSON.stringify(data ?? { sent: order_ids }, null, 2));
     },

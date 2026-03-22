@@ -45,8 +45,10 @@ const sourceLines = allSource.split("\n");
 const missingDescribe: string[] = [];
 for (let i = 0; i < sourceLines.length; i++) {
   const line = sourceLines[i];
-  const paramMatch = line.match(/^\s*([\w]+):\s*z\./);
+  const paramMatch = line.match(/^\s*([\w]+):\s*(z\.|coerceBool|companyId)/);
   if (!paramMatch) continue;
+  // companyId has .describe() built into the shared schema — skip
+  if (paramMatch[2] === "companyId") continue;
   // Check current line and next line for .describe(
   const twoLines = line + (sourceLines[i + 1] || "");
   if (!twoLines.includes(".describe(")) {
