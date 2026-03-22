@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond, withLlmTip } from "./utils.js";
+import { companyId, respond, withLlmTip, paginateOrders } from "./utils.js";
 
 interface Order {
   OrderID: number;
@@ -12,10 +12,6 @@ interface Order {
     DisplayName: string;
     VATNumber?: string;
   };
-}
-
-interface OrdersResponse {
-  Items: Order[];
 }
 
 interface PeppolLookupResponse {
@@ -57,8 +53,6 @@ function currentYearStart(): string {
   return new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
 }
 
-const MAX_PAGES = 100;
-
 export function registerWorkflowTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_check_peppol_coverage",
@@ -78,25 +72,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       const fromDate = since_date ?? currentYearStart();
 
       // Fetch all outgoing invoices since date (paginate through all pages)
-      const allOrders: Order[] = [];
-      let skip = 0;
-      const pageSize = 120;
-
-      for (let page_num = 0; page_num < MAX_PAGES; page_num++) {
-        const filter = `OrderDirection eq 'Income' and OrderType eq 'Invoice' and OrderDate ge datetime'${fromDate}T00:00:00'`;
-        const params = new URLSearchParams({
-          "$filter": filter,
-          "$top": String(pageSize),
-          "$skip": String(skip),
-          "$orderby": "OrderDate desc",
-        });
-        const page = await client.request<OrdersResponse>("GET", `/v1/orders?${params.toString()}`, undefined, company_id);
-        const items = page?.Items ?? [];
-        allOrders.push(...items);
-        if (items.length < pageSize) break;
-        skip += pageSize;
-        if (page_num === MAX_PAGES - 1) throw new Error(`Pagination limit reached (${MAX_PAGES} pages / ${MAX_PAGES * pageSize} items). Use a more recent since_date to narrow scope.`);
-      }
+      const allOrders = await paginateOrders(client, fromDate, company_id);
 
       // Deduplicate by VAT number — collect unique VATs with their invoices
       const byVat = new Map<string, { name: string; invoices: Array<{ id: number; number: string; date: string; amount: number }> }>();
@@ -179,25 +155,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       const fromDate = since_date ?? currentYearStart();
 
       // 1. Paginate all Income invoices since date
-      const allOrders: Order[] = [];
-      let skip = 0;
-      const pageSize = 120;
-
-      for (let page_num = 0; page_num < MAX_PAGES; page_num++) {
-        const filter = `OrderDirection eq 'Income' and OrderType eq 'Invoice' and OrderDate ge datetime'${fromDate}T00:00:00'`;
-        const params = new URLSearchParams({
-          "$filter": filter,
-          "$top": String(pageSize),
-          "$skip": String(skip),
-          "$orderby": "OrderDate desc",
-        });
-        const page = await client.request<OrdersResponse>("GET", `/v1/orders?${params.toString()}`, undefined, company_id);
-        const items = page?.Items ?? [];
-        allOrders.push(...items);
-        if (items.length < pageSize) break;
-        skip += pageSize;
-        if (page_num === MAX_PAGES - 1) throw new Error(`Pagination limit reached (${MAX_PAGES} pages / ${MAX_PAGES * pageSize} items). Use a more recent since_date to narrow scope.`);
-      }
+      const allOrders = await paginateOrders(client, fromDate, company_id);
 
       // 2. Split: no VAT / has VAT
       const noVat: Order[] = [];

@@ -32,7 +32,8 @@ export class BillitClient {
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
+      const raw = await res.text().catch(() => "");
+      const text = raw.length > 2000 ? raw.slice(0, 2000) + `… [truncated, ${raw.length} chars total]` : raw;
       throw new Error(`Billit ${res.status} ${method} ${path}: ${text}`);
     }
     if (res.status === 204) return undefined as T;
