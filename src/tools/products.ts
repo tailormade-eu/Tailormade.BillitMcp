@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerProductTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -43,7 +43,10 @@ export function registerProductTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_create_product",
-    "Create a new product in the Billit catalog, or update an existing product if one with the same reference already exists. Use to maintain a reusable product list for order lines.\n\nNOTE: If a product with the same 'reference' already exists, this acts as an upsert (update). Use a unique reference code to distinguish products.",
+    withLlmTip(
+      "Create a new product in the Billit catalog, or update an existing product if one with the same reference already exists. Use to maintain a reusable product list for order lines.",
+      "If a product with the same 'reference' already exists, this acts as an upsert (update). Use a unique reference code to distinguish products."
+    ),
     {
       description: z.string().describe("Product or service description (required)"),
       reference: z.string().optional().describe("Unique product reference/SKU code. If a product with this reference exists, it will be updated."),
