@@ -16,8 +16,8 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
     async ({ orderby, top, skip, company_id }) => {
       const params = new URLSearchParams();
       if (orderby) params.set("$orderby", orderby);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
+      if (top !== undefined) params.set("$top", String(top));
+      if (skip !== undefined) params.set("$skip", String(skip));
       const qs = params.toString();
       const data = await client.request("GET", `/v1/peppol/inbox${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));

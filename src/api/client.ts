@@ -25,7 +25,7 @@ export class BillitClient {
 
   async request<T>(method: string, path: string, body?: unknown, partyIdOverride?: number): Promise<T> {
     const headers = { ...this.headers };
-    if (partyIdOverride) headers["PartyID"] = String(partyIdOverride);
+    if (partyIdOverride !== undefined) headers["PartyID"] = String(partyIdOverride);
     const res = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers,

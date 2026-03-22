@@ -43,8 +43,8 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       if (filters.length) params.set("$filter", filters.join(" and "));
       if (search) params.set("fullTextSearch", search);
       if (orderby) params.set("$orderby", orderby);
-      if (top) params.set("$top", String(top));
-      if (skip) params.set("$skip", String(skip));
+      if (top !== undefined) params.set("$top", String(top));
+      if (skip !== undefined) params.set("$skip", String(skip));
       const qs = params.toString();
       const data = await client.request("GET", `/v1/orders${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
