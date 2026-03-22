@@ -15,7 +15,7 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
     "List parties (customers and/or suppliers) in Billit. Returns array with PartyID, CommercialName, VATNumber, Email, PartyType. Supports OData $filter, $orderby, full-text search. Next steps: billit_get_party for full details, billit_create_order to create an invoice for a party.\n\nEXAMPLES:\n- filter=\"PartyType eq 'Customer'\"\n- filter=\"DisplayName eq 'Acme NV'\"\n- orderby='CommercialName asc'\n\nNOTE: fullTextSearch is a separate param — do NOT put it in OData $filter.",
     {
       party_type: z.enum(["Customer", "Supplier", "Both"]).optional().describe("Shortcut filter by party type. Equivalent to filter=\"PartyType eq '...'\"."),
-      filter: z.string().optional().describe("OData $filter expression. Examples: \"DisplayName eq 'Acme NV'\", \"PartyType eq 'Customer'\""),
+      filter: z.string().optional().describe("OData $filter expression. Examples: \"DisplayName eq 'Acme NV'\", \"PartyType eq 'Customer'\". NOTE: If you also provide party_type, it will be merged with AND unless your filter already contains a PartyType condition."),
       orderby: z.string().optional().describe("OData $orderby expression. Examples: 'CommercialName asc', 'DisplayName desc'"),
       search: z.string().optional().describe("Full-text search on name, VAT number, email. Sent as separate 'fullTextSearch' query param."),
       top: z.coerce.number().optional().describe("Max results per page (max: 120)"),
@@ -24,7 +24,9 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
     },
     async ({ party_type, filter, orderby, search, top, skip, company_id }) => {
       const filters: string[] = [];
-      if (party_type) filters.push(`PartyType eq '${party_type}'`);
+      if (party_type && !(filter && /PartyType/i.test(filter))) {
+        filters.push(`PartyType eq '${party_type}'`);
+      }
       if (filter) filters.push(filter);
       const params = new URLSearchParams();
       if (filters.length) params.set("$filter", filters.join(" and "));

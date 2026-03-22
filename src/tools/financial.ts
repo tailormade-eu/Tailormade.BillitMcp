@@ -128,7 +128,7 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
     "billit_get_report",
     "Get the data of a specific Billit report. Use billit_list_reports to find report IDs.",
     {
-      report_id: z.number()
+      report_id: z.coerce.number()
         .describe("Numeric report ID from billit_list_reports result"),
       company_id: companyId,
     },
