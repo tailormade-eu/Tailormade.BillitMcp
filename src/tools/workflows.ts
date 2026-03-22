@@ -72,6 +72,9 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ since_date, company_id }) => {
+      if (since_date && !/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(since_date)) {
+        return respond("Error: since_date must be ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)");
+      }
       const fromDate = since_date ?? currentYearStart();
 
       // Fetch all outgoing invoices since date (paginate through all pages)
@@ -170,6 +173,9 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ since_date, company_id }) => {
+      if (since_date && !/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(since_date)) {
+        return respond("Error: since_date must be ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)");
+      }
       const fromDate = since_date ?? currentYearStart();
 
       // 1. Paginate all Income invoices since date
