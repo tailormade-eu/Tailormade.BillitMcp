@@ -4,8 +4,8 @@
 
 | # | Test | Command/Action | Expected | Status |
 |---|------|----------------|----------|--------|
-| 1 | Build | `npm run build` | 0 errors | ⬜ |
-| 2 | Coverage check | `npm run check-coverage` | 0 gaps | ⬜ |
+| 1 | Build | `npm run build` | 0 errors | ✅ |
+| 2 | Coverage check | `npm run check-coverage` | 0 gaps | ✅ |
 | 3 | billit_get_account_info | Call without PartyID | Returns linked companies | ⬜ |
 | 4 | billit_list_orders Income | `direction=Income` | Returns sales invoices | ⬜ |
 | 5 | billit_list_orders Cost | `direction=Cost` | Returns purchase invoices | ⬜ |
@@ -30,11 +30,11 @@
 | 24 | peppol_unregister dry_run | `dry_run=true` on billit_peppol_unregister | Returns preview message, no API call | ⬜ |
 | 25 | Dynamic since_date default | Call workflow without since_date | Uses current year start, not hardcoded 2026 | ⬜ |
 
-| 26 | Server version dynamic | Check McpServer version | Matches package.json version (1.1.0) | ⬜ |
+| 26 | Server version dynamic | Check McpServer version | Matches package.json version (1.1.1) | ⬜ |
 | 27 | billit_get_report string ID | Pass report_id as string `"123"` | z.coerce.number() accepts it | ⬜ |
 | 28 | list_parties conflicting PartyType | `party_type=Customer` + `filter="PartyType eq 'Supplier'"` | Uses only filter, no contradiction | ⬜ |
 
-**Score: 0/28**
+**Score: 2/28**
 
 ---
 
