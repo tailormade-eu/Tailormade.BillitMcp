@@ -3,6 +3,10 @@
 ## [1.1.1] - 2026-03-22
 
 ### Fixed
+- `vat_or_cbe` not URL-encoded in peppol lookup path — added `encodeURIComponent()` (Task 21, CR16/W8)
+- `buildODataParams` accepted whitespace-only filter strings — now uses `filter?.trim()` (Task 21, CR17)
+- `since_date` in workflows.ts lacked input validation — added ISO 8601 regex to prevent OData injection (Task 20, CR15)
+- `withLlmTip()` separator missing trailing newline — now `\n\n---\n\n` for correct markdown rendering (Task 22, S7)
 - `NOTE:` blocks still in description for 3 tools — moved to `withLlmTip()` (Task 14, CR10)
 - Silent catch on full-order-fetch in `billit_peppol_send_report` — now surfaces errors with `fetch_failed` bucket (Task 15, CR11)
 - `withLlmTip()` used XML `<llmTip>` tags — replaced with plain `---` separator (Task 16, CR12)
@@ -26,7 +30,7 @@
 - `since_date` describe() text hardcoded "2026-01-01" — now says "start of current year" (Task 13)
 
 ### Added
-- `dry_run` parameter on 10 write tools: delete_order, peppol_unregister, create/update/confirm/send_order, register_payment, create/update_party, create_product (R7, R8, Task 18, W5)
+- `dry_run` parameter on 14 write tools: delete_order, peppol_unregister, create/update/confirm/send_order, register_payment, create/update_party, create_product, peppol_send_order, submit/cancel_processing, import_financial_transactions (R7, R8, Task 18, Task 19, CR14)
 - `company_id` param on `billit_peppol_lookup_participant` — consistent with all other peppol tools (Task 18, S6)
 - `buildODataParams()` helper in utils.ts — replaces inline URLSearchParams in 7 list-tools (Task 18, S5)
 - Bidirectional llmTip sync between code and GUIDELINES-BILLIT.md (R11)
