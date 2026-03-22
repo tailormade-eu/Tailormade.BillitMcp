@@ -88,8 +88,8 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
         .describe("Base64-encoded CODA or MT940 bank statement file content"),
       file_name: z.string()
         .describe("File name (e.g. 'statement-2026-01.coda' or 'statement.mt940')"),
-      content_type: z.string()
-        .describe("MIME type of the file"),
+      content_type: z.string().optional()
+        .describe("MIME type of the file (e.g. 'application/octet-stream'). Auto-detected from file_name if omitted."),
       company_id: companyId,
     },
     async ({ file_base64, file_name, content_type, company_id }) => {

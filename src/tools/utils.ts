@@ -11,5 +11,7 @@ export function withLlmTip(description: string, tip: string): string {
   return `${description}\n\n<llmTip>\n${tip}\n</llmTip>`;
 }
 
+export const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
+
 export const companyId = z.coerce.number().optional()
   .describe("Billit PartyID of the company to act as. If not set, uses BILLIT_PARTY_ID env. If env is 0, call billit_get_account_info first to discover available companies.");

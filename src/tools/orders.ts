@@ -1,9 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond, withLlmTip } from "./utils.js";
-
-const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
+import { coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerOrderTools(server: McpServer, client: BillitClient) {
   server.tool(

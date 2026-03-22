@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond, withLlmTip } from "./utils.js";
+import { coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerPeppolTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -96,7 +96,7 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
     ),
     {
       company_id: companyId,
-      dry_run: z.union([z.boolean(), z.string().transform(v => v === "true")]).optional()
+      dry_run: coerceBool
         .describe("If true, returns what would happen without actually unregistering. Default: false."),
     },
     async ({ company_id, dry_run }) => {

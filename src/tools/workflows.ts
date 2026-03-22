@@ -63,7 +63,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
     "WORKFLOW (multi-step): Scans all outgoing invoices (Income/Invoice) since a date, deduplicates customers by VAT number, and checks each unique VAT against the Peppol network. Returns two groups: customers NOT on Peppol (priority list for onboarding) and customers already on Peppol.\n\nUSE THIS when the user asks: 'which customers are not on Peppol?', 'who should I onboard to e-invoicing?', 'check Peppol coverage', 'which invoices can't be sent via Peppol?'\nDO NOT use this for a single VAT lookup — use billit_peppol_lookup_participant instead.\n\nOUTPUT: { summary: { period_from, total_customers_with_vat, not_on_peppol, on_peppol }, not_on_peppol: [{ vat, name, invoiceCount, totalAmount, invoices[] }] sorted by totalAmount desc, on_peppol: [{ vat, name, invoiceCount }] }\n\nNOTE: May be slow if there are many invoices — paginates through all pages automatically. Peppol lookups run in parallel.",
     {
       since_date: z.string().optional()
-        .describe("Start date for invoice scan (YYYY-MM-DD). Default: 2026-01-01. Use a recent date to limit scope and improve speed."),
+        .describe("Start date for invoice scan (YYYY-MM-DD). Default: start of current year (YYYY-01-01). Use a recent date to limit scope and improve speed."),
       company_id: companyId,
     },
     async ({ since_date, company_id }) => {
@@ -157,7 +157,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
     "WORKFLOW (multi-step): Scans all outgoing invoices (Income/Invoice) since a date and reports their Peppol send status. For each invoice with a VAT number: checks if customer is on Peppol, then fetches full order to check if it was actually sent via Peppol.\n\nUSE THIS when the user asks: 'which invoices were sent via Peppol?', 'which Peppol invoices are not yet sent?', 'Peppol send status overview', 'which invoices still need to be sent via Peppol?', 'have all Peppol invoices been dispatched?'\nDO NOT use this to check if a customer is on Peppol — use billit_check_peppol_coverage or billit_peppol_lookup_participant instead.\nDO NOT use this to send invoices — use billit_peppol_send_order to dispatch a single invoice.\n\nOUTPUT: { summary: { period_from, total_invoices, sent_via_peppol, on_peppol_not_sent, not_on_peppol, no_vat }, sent_via_peppol: [{ id, number, date, amount, vat, customer, deliveryStatus }], on_peppol_not_sent: [...], not_on_peppol: [...] }\n\nNOTE: Slower than billit_check_peppol_coverage — fetches full order details for every Peppol-eligible invoice (N requests). Use a recent since_date to limit scope. Peppol send is detected via order Messages (TransportType='Peppol') or CurrentDocumentDeliveryDetails.IsDocumentDelivered.",
     {
       since_date: z.string().optional()
-        .describe("Start date for invoice scan (YYYY-MM-DD). Default: 2026-01-01. Use a recent date (e.g. current month) to limit scope and reduce API calls."),
+        .describe("Start date for invoice scan (YYYY-MM-DD). Default: start of current year (YYYY-01-01). Use a recent date (e.g. current month) to limit scope and reduce API calls."),
       company_id: companyId,
     },
     async ({ since_date, company_id }) => {
