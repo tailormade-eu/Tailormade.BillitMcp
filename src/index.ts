@@ -45,4 +45,9 @@ async function main(): Promise<void> {
   await server.connect(transport);
 }
 
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+  process.exit(1);
+});
+
 main().catch((err) => { console.error(err); process.exit(1); });

@@ -57,6 +57,8 @@ function currentYearStart(): string {
   return new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
 }
 
+const MAX_PAGES = 100;
+
 export function registerWorkflowTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_check_peppol_coverage",
@@ -77,7 +79,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       let skip = 0;
       const pageSize = 120;
 
-      while (true) {
+      for (let page_num = 0; page_num < MAX_PAGES; page_num++) {
         const filter = `OrderDirection eq 'Income' and OrderType eq 'Invoice' and OrderDate ge datetime'${fromDate}T00:00:00'`;
         const params = new URLSearchParams({
           "$filter": filter,
@@ -90,6 +92,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
         allOrders.push(...items);
         if (items.length < pageSize) break;
         skip += pageSize;
+        if (page_num === MAX_PAGES - 1) throw new Error(`Pagination limit reached (${MAX_PAGES} pages / ${MAX_PAGES * pageSize} items). Use a more recent since_date to narrow scope.`);
       }
 
       // Deduplicate by VAT number — collect unique VATs with their invoices
@@ -174,7 +177,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       let skip = 0;
       const pageSize = 120;
 
-      while (true) {
+      for (let page_num = 0; page_num < MAX_PAGES; page_num++) {
         const filter = `OrderDirection eq 'Income' and OrderType eq 'Invoice' and OrderDate ge datetime'${fromDate}T00:00:00'`;
         const params = new URLSearchParams({
           "$filter": filter,
@@ -187,6 +190,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
         allOrders.push(...items);
         if (items.length < pageSize) break;
         skip += pageSize;
+        if (page_num === MAX_PAGES - 1) throw new Error(`Pagination limit reached (${MAX_PAGES} pages / ${MAX_PAGES * pageSize} items). Use a more recent since_date to narrow scope.`);
       }
 
       // 2. Split: no VAT / has VAT

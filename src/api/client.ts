@@ -15,10 +15,10 @@ export class BillitClient {
       "Content-Type": "application/json",
       "ApiKey": config.apiKey,
     };
-    if (config.partyId) {
+    if (config.partyId !== undefined && config.partyId !== 0) {
       this.headers["PartyID"] = String(config.partyId);
     }
-    if (config.contextPartyId) {
+    if (config.contextPartyId !== undefined && config.contextPartyId !== 0) {
       this.headers["ContextPartyID"] = String(config.contextPartyId);
     }
   }

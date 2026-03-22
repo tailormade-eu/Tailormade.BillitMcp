@@ -34,7 +34,12 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       const filters: string[] = [];
       if (direction) filters.push(`OrderDirection eq '${direction}'`);
       if (order_type) filters.push(`OrderType eq '${order_type}'`);
-      if (modified_after) filters.push(`LastModified ge datetime'${modified_after}'`);
+      if (modified_after) {
+        if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(modified_after)) {
+          return respond("Error: modified_after must be ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)");
+        }
+        filters.push(`LastModified ge datetime'${modified_after}'`);
+      }
       if (approval_status) filters.push(`ApprovalStatus eq '${approval_status}'`);
       if (paid !== undefined) filters.push(`Paid eq ${paid}`);
       const params = new URLSearchParams();
