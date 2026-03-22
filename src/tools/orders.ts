@@ -1,14 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { companyId, respond, withLlmTip } from "./utils.js";
 
 const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
 
 export function registerOrderTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_list_orders",
-    "List orders from Billit. Returns paginated array of orders (invoices, credit notes, offers). Use direction='Income' for outgoing (sales) orders, direction='Cost' for incoming (purchase) orders. Supports OData filtering and full-text search. Next steps: billit_get_order for full details including order lines, billit_confirm_order to approve, billit_register_payment when paid.\n\nWARNING: OrderDirection 'Income' means money coming IN (= outgoing invoices you send to customers). OrderDirection 'Cost' means money going OUT (= incoming invoices from suppliers). This is counter-intuitive. NOTE: fullTextSearch is a separate query param — do NOT put it in the OData $filter. OData date filter syntax: LastModified ge datetime'2026-01-01T00:00:00'. NOTE: PartyName may be empty in list responses — use billit_get_order for full party/supplier details.",
+    withLlmTip(
+      "List orders from Billit. Returns paginated array of orders (invoices, credit notes, offers). Use direction='Income' for outgoing (sales) orders, direction='Cost' for incoming (purchase) orders. Supports OData filtering and full-text search. Next steps: billit_get_order for full details including order lines, billit_confirm_order to approve, billit_register_payment when paid.",
+      "OrderDirection naming is counter-intuitive: 'Income' = outgoing invoices you send to customers, 'Cost' = incoming invoices from suppliers.\nERROR: fullTextSearch in $filter → CAUSE: fullTextSearch is a separate query param → FIX: pass as 'fullTextSearch' param, not inside $filter.\nOData date filter syntax: LastModified ge datetime'2026-01-01T00:00:00'.\nPartyName may be empty in list responses — use billit_get_order for full party/supplier details."
+    ),
     {
       direction: z.enum(["Income", "Cost"]).optional()
         .describe("Filter by order direction: 'Income' = outgoing sales invoices (money coming in), 'Cost' = incoming purchase invoices (money going out)"),
@@ -63,7 +66,10 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_create_order",
-    "Create a new order (invoice or credit note) in Billit. For outgoing sales invoices use order_direction='Income'. For incoming purchase invoices use order_direction='Cost'. Returns the created order ID. Next steps: billit_confirm_order to set ApprovalStatus=approved, billit_send_order to email/Peppol.\n\nNOTE: 'lines' parameter must be a JSON string containing an array: '[{\"description\":\"Service\",\"quantity\":1,\"unit_price_excl\":100,\"vat_percentage\":21}]'. EXAMPLE: to create a sales invoice for customer BE0123456789, use order_direction='Income', order_type='Invoice'.",
+    withLlmTip(
+      "Create a new order (invoice or credit note) in Billit. For outgoing sales invoices use order_direction='Income'. For incoming purchase invoices use order_direction='Cost'. Returns the created order ID. Next steps: billit_confirm_order to set ApprovalStatus=approved, billit_send_order to email/Peppol.",
+      "ERROR: lines param not parsed → CAUSE: must be a JSON string array → FIX: pass '[{\"description\":\"Service\",\"quantity\":1,\"unit_price_excl\":100,\"vat_percentage\":21}]'.\nExample: sales invoice for BE0123456789 → order_direction='Income', order_type='Invoice'."
+    ),
     {
       order_type: z.enum(["Invoice", "CreditNote"]).describe("'Invoice' or 'CreditNote'"),
       order_direction: z.enum(["Income", "Cost"]).describe("'Income' = outgoing sales invoice (you send to customer), 'Cost' = incoming purchase invoice (from supplier)"),
@@ -131,7 +137,10 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_update_order",
-    "Update a limited set of fields on an existing order: payment status, send status, approval status, internal info, account code, export flags. Only include fields you want to change — absent fields are not modified.\n\nNOTE: Only fields present in the request are updated. To mark an order as paid, provide both paid=true and paid_date. To approve use billit_confirm_order (shortcut) or set approval_status='approved' here.",
+    withLlmTip(
+      "Update a limited set of fields on an existing order: payment status, send status, approval status, internal info, account code, export flags. Only include fields you want to change — absent fields are not modified.",
+      "Only fields present in the request are updated. To mark as paid, provide both paid=true and paid_date. To approve use billit_confirm_order (shortcut) or set approval_status='approved' here."
+    ),
     {
       order_id: z.coerce.number().describe("Numeric order ID to update"),
       paid: coerceBool.describe("Set to true to mark order as paid"),
@@ -209,7 +218,10 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_send_order",
-    "Send one or more orders to the customer via email or Peppol (depending on customer configuration). Returns immediately — delivery is async. Prerequisites: order must be confirmed (ApprovalStatus=approved). Use billit_peppol_lookup_participant first to check if customer is on Peppol.\n\nNOTE: Sending method (email vs Peppol) is determined by Billit based on customer configuration. To force Peppol, use billit_peppol_send_order instead. CRITICAL: order must have ApprovalStatus='approved' before sending — use billit_confirm_order first.",
+    withLlmTip(
+      "Send one or more orders to the customer via email or Peppol (depending on customer configuration). Returns immediately — delivery is async. Prerequisites: order must be confirmed (ApprovalStatus=approved). Use billit_peppol_lookup_participant first to check if customer is on Peppol.",
+      "Sending method (email vs Peppol) is determined by Billit based on customer config. To force Peppol, use billit_peppol_send_order instead.\nERROR: send fails → CAUSE: order not approved → FIX: call billit_confirm_order first to set ApprovalStatus='approved'."
+    ),
     {
       order_ids: z.array(z.number()).describe("Array of numeric order IDs to send (can send multiple at once)"),
       company_id: companyId,

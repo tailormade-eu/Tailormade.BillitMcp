@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerDocumentTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -43,7 +43,10 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_upload_document",
-    "Upload a document to Billit (e.g. an incoming invoice PDF for processing). Returns the created DocumentID. Next step: billit_submit_for_processing to have Billit parse the document.\n\nNOTE: file_base64 must be a base64-encoded string of the file content. EXAMPLE: for a PDF, encode the raw bytes as base64. Max file size depends on Billit account settings.",
+    withLlmTip(
+      "Upload a document to Billit (e.g. an incoming invoice PDF for processing). Returns the created DocumentID. Next step: billit_submit_for_processing to have Billit parse the document.",
+      "file_base64 must be a base64-encoded string of the file content (raw bytes → base64). Max file size depends on Billit account settings."
+    ),
     {
       file_base64: z.string().describe("Base64-encoded file content"),
       file_name: z.string().describe("File name including extension (e.g. 'invoice-2026-001.pdf')"),
@@ -61,7 +64,10 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_download_file",
-    "Download a file by its UUID. File UUIDs are found in order responses (PDF of the invoice), document responses, or accountant feed items. Returns base64-encoded file content.\n\nCRITICAL: This endpoint uses a UUID (string like 'a1b2c3d4-...'), NOT a numeric ID. The fileID comes from order/document response fields, not from the DocumentID. Do not confuse DocumentID (numeric) with fileID (UUID).",
+    withLlmTip(
+      "Download a file by its UUID. File UUIDs are found in order responses (PDF of the invoice), document responses, or accountant feed items. Returns base64-encoded file content.",
+      "ERROR: 404 on download → CAUSE: passing numeric DocumentID instead of UUID fileID → FIX: use the UUID string (e.g. 'a1b2c3d4-...') from order/document response fields, NOT the numeric DocumentID."
+    ),
     {
       file_id: z.string().describe("File UUID (e.g. 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'). Found in order or document response fields. This is NOT the numeric DocumentID."),
       company_id: companyId,

@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerPeppolTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -52,7 +52,10 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_peppol_send_order",
-    "Send a specific order directly via the Peppol e-invoicing network. Use billit_peppol_lookup_participant first to verify the customer is a Peppol participant. Prerequisites: order must be confirmed (ApprovalStatus=approved).\n\nCRITICAL: The customer must be registered on Peppol before you can send. Use billit_peppol_lookup_participant with their VAT/CBE number first. If they are not on Peppol, use billit_send_order (which falls back to email) instead.",
+    withLlmTip(
+      "Send a specific order directly via the Peppol e-invoicing network. Use billit_peppol_lookup_participant first to verify the customer is a Peppol participant. Prerequisites: order must be confirmed (ApprovalStatus=approved).",
+      "ERROR: Peppol send fails → CAUSE: customer not registered on Peppol → FIX: call billit_peppol_lookup_participant with their VAT/CBE number first. If not on Peppol, use billit_send_order (falls back to email) instead."
+    ),
     {
       order_id: z.coerce.number().describe("Numeric order ID to send via Peppol"),
       company_id: companyId,
@@ -87,7 +90,10 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_peppol_unregister",
-    "Unregister the current Billit party from the Peppol network. After this, the party can no longer receive or send via Peppol. Use with caution.\n\nWARNING: Unregistering from Peppol is immediate and affects all incoming e-invoices. Confirm with the user before calling this.\n\nSupports dry_run=true to preview without making changes.",
+    withLlmTip(
+      "Unregister the current Billit party from the Peppol network. After this, the party can no longer receive or send via Peppol. Use with caution. Supports dry_run=true to preview without making changes.",
+      "Unregistering from Peppol is immediate and affects all incoming e-invoices. Always confirm with the user before calling this."
+    ),
     {
       company_id: companyId,
       dry_run: z.union([z.boolean(), z.string().transform(v => v === "true")]).optional()

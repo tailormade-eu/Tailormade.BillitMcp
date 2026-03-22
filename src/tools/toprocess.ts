@@ -1,12 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerToProcessTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_submit_for_processing",
-    "Submit a file (e.g. incoming invoice PDF) to Billit for automated processing. Billit will parse the document and create a corresponding order. Returns an uploadID that can be used to cancel. Use for processing incoming supplier invoices without manual data entry.\n\nNOTE: file_base64 must be base64-encoded file content. The processing is async — Billit will parse the document and create an order in the background. Use billit_list_orders with direction='Cost' after processing to find the created order.",
+    withLlmTip(
+      "Submit a file (e.g. incoming invoice PDF) to Billit for automated processing. Billit will parse the document and create a corresponding order. Returns an uploadID that can be used to cancel. Use for processing incoming supplier invoices without manual data entry.",
+      "file_base64 must be base64-encoded file content. Processing is async — Billit parses the document and creates an order in the background. Use billit_list_orders with direction='Cost' after processing to find the created order."
+    ),
     {
       file_base64: z.string().describe("Base64-encoded file content of the document to process"),
       file_name: z.string().describe("File name including extension (e.g. 'supplier-invoice-001.pdf')"),

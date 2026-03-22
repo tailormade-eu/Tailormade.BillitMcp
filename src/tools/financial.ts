@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond } from "./utils.js";
+import { companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerFinancialTools(server: McpServer, client: BillitClient) {
   // ── billit_get_account_info ───────────────────────────────────────
@@ -46,7 +46,10 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_list_financial_transactions ─────────────────────────────
   server.tool(
     "billit_list_financial_transactions",
-    "List financial transactions in Billit (bank transactions, payments). Use to reconcile payments with orders. Supports full-text search, OData $filter and $orderby.\n\nEXAMPLES:\n- Recent first: orderby='ValueDate desc'\n- Date range: filter=\"ValueDate ge datetime'2026-01-01T00:00:00' and ValueDate le datetime'2026-03-31T23:59:59'\"\n- By counterparty: filter=\"NameCounterParty eq 'Acme Corp'\"\n- Combined: orderby='ValueDate desc', filter=\"ValueDate ge datetime'2026-01-01T00:00:00'\"\n\nNOTE: max page size is 120. Date filter requires datetime'' syntax.",
+    withLlmTip(
+      "List financial transactions in Billit (bank transactions, payments). Use to reconcile payments with orders. Supports full-text search, OData $filter and $orderby.\n\nEXAMPLES:\n- Recent first: orderby='ValueDate desc'\n- Date range: filter=\"ValueDate ge datetime'2026-01-01T00:00:00' and ValueDate le datetime'2026-03-31T23:59:59'\"\n- By counterparty: filter=\"NameCounterParty eq 'Acme Corp'\"\n- Combined: orderby='ValueDate desc', filter=\"ValueDate ge datetime'2026-01-01T00:00:00'\"",
+      "Max page size is 120. Date filter requires datetime'' syntax."
+    ),
     {
       search: z.string().optional()
         .describe("Full-text search on transaction description, reference, or amount"),
@@ -76,7 +79,10 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_import_financial_transactions ───────────────────────────
   server.tool(
     "billit_import_financial_transactions",
-    "Import bank transactions from a CODA or MT940 bank statement file. Use to bulk-import bank transactions for payment reconciliation.\n\nNOTE: Supported formats are CODA (Belgian bank format) and MT940 (SWIFT bank format). file_base64 must be base64-encoded file content.",
+    withLlmTip(
+      "Import bank transactions from a CODA or MT940 bank statement file. Use to bulk-import bank transactions for payment reconciliation.",
+      "Supported formats: CODA (Belgian bank format) and MT940 (SWIFT bank format). file_base64 must be base64-encoded file content."
+    ),
     {
       file_base64: z.string()
         .describe("Base64-encoded CODA or MT940 bank statement file content"),
@@ -135,7 +141,10 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_list_accountant_feeds ──────────────────────────────────
   server.tool(
     "billit_list_accountant_feeds",
-    "List all accountant feeds and their pending items. Feeds contain newly exported orders and documents for accountant processing. Poll at most once per minute. Next steps: billit_download_accountant_file to download items, billit_confirm_accountant_feed to confirm processed items.\n\nWARNING: Do not poll more than once per minute — this is a rate-limited endpoint. After downloading feed items, always confirm them with billit_confirm_accountant_feed to remove them from the feed.",
+    withLlmTip(
+      "List all accountant feeds and their pending items. Feeds contain newly exported orders and documents for accountant processing. Poll at most once per minute. Next steps: billit_download_accountant_file to download items, billit_confirm_accountant_feed to confirm processed items.",
+      "ERROR: rate limit hit → CAUSE: polling more than once per minute → FIX: wait at least 60s between calls.\nAfter downloading feed items, always confirm them with billit_confirm_accountant_feed to remove them from the feed."
+    ),
     { company_id: companyId },
     async ({ company_id }) => {
       const data = await client.request("GET", "/v1/accountant/feeds", undefined, company_id);
@@ -157,7 +166,10 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_confirm_accountant_feed ────────────────────────────────
   server.tool(
     "billit_confirm_accountant_feed",
-    "Confirm that feed items have been successfully downloaded. This removes them from the feed list. Always call this after processing items from billit_list_accountant_feeds.\n\nCRITICAL: Always confirm downloaded items — without confirmation, the same items will reappear on the next poll. Pass the feed item IDs from the billit_list_accountant_feeds response.",
+    withLlmTip(
+      "Confirm that feed items have been successfully downloaded. This removes them from the feed list. Always call this after processing items from billit_list_accountant_feeds.",
+      "ERROR: duplicate items on next poll → CAUSE: items not confirmed after download → FIX: always call this after downloading feed items, passing the feed item IDs from billit_list_accountant_feeds response."
+    ),
     {
       feed_item_ids: z.array(z.string())
         .describe("Array of feed item ID strings to confirm as downloaded. Get these from billit_list_accountant_feeds response."),
