@@ -7,7 +7,7 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_get_account_info ───────────────────────────────────────
   server.tool(
     "billit_get_account_info",
-    "Get account and company information for the authenticated Billit API key. Returns a Companies array with PartyID, Name, VATNumber, and other details for each company associated with the API key.\n\nSTARTUP PROTOCOL: If BILLIT_PARTY_ID env is 0 or unknown, call this tool FIRST before any other Billit tool. Store the Companies array in memory (name → PartyID mapping). Then choose the correct company_id for all subsequent Billit tool calls based on conversation context.\n\nEXAMPLE: after calling this, you know 'JaRa Productions bv' = PartyID 208029 and 'TAILORMADE 2018,SL' = PartyID 663845. When user asks about invoices for JaRa, pass company_id=208029 to billit_list_orders.",
+    "Get account and company information for the authenticated Billit API key. Returns a Companies array with PartyID, Name, VATNumber, and other details for each company associated with the API key.\n\nSTARTUP PROTOCOL: If BILLIT_PARTY_ID env is 0 or unknown, call this tool FIRST before any other Billit tool. Store the Companies array in memory (name → PartyID mapping). Then choose the correct company_id for all subsequent Billit tool calls based on conversation context.\n\nEXAMPLE: after calling this, you get a Companies array with PartyID + Name for each company. When user asks about invoices for a specific company, pass the matching company_id to billit_list_orders.",
     {},
     async () => {
       const data = await client.request("GET", "/v1/account/accountInformation");
