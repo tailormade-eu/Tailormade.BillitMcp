@@ -8,7 +8,7 @@ export function respond(text: string) {
  *  Keeps description focused on What/When/Output/Next while surfacing gotchas,
  *  spec-gaps, and ERROR→CAUSE→FIX in a clearly separated section. */
 export function withLlmTip(description: string, tip: string): string {
-  return `${description}\n\n---\n${tip}`;
+  return `${description}\n\n---\n\n${tip}`;
 }
 
 export const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
