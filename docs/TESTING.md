@@ -156,7 +156,9 @@ billit_list_reports company_id=<party-id> top=5
 npm run check-coverage
 ```
 
-Expected: `✅ Coverage check passed (39 tools covering 55 endpoints)`
+Checks that all tools have non-empty descriptions and all params have `.describe()`.
+
+Expected: `✅ Coverage check passed (39 tools, all descriptions and .describe() present)`
 
 ---
 

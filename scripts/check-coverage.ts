@@ -1,4 +1,14 @@
 #!/usr/bin/env tsx
+// check-coverage.ts — Tool quality checks for Billit MCP
+//
+// What it checks:
+//   1. All registered tools have a non-empty description
+//   2. All Zod params have .describe() for LLM readability
+//
+// What it does NOT check:
+//   - Whether specific API endpoints are mapped to tools
+//   - Whether tool implementations call the correct endpoints
+//
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
@@ -75,7 +85,7 @@ if (missingDescribe.length > 0) {
   hasGaps = true;
   console.log(`❌ ${missingDescribe.length} param(s) missing .describe():`);
   for (const m of missingDescribe) {
-    console.log(`   ${m[0].trim()}`);
+    console.log(`   ${m.trim()}`);
   }
 } else {
   console.log(`✅ All params have .describe()`);
@@ -87,5 +97,5 @@ if (hasGaps) {
   console.log(`❌ Coverage check FAILED\n`);
   process.exit(1);
 } else {
-  console.log(`✅ Coverage check passed (${toolNames.length} tools covering ${endpoints.length} endpoints)\n`);
+  console.log(`✅ Coverage check passed (${toolNames.length} tools, all descriptions and .describe() present)\n`);
 }
