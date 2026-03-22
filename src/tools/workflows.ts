@@ -120,7 +120,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       const vatList = Array.from(byVat.entries());
       const peppolResults = await batchAll(
         vatList.map(([vat]) => () =>
-          client.request<PeppolLookupResponse>("GET", `/v1/peppol/participantInformation/${vat}`)
+          client.request<PeppolLookupResponse>("GET", `/v1/peppol/participantInformation/${encodeURIComponent(vat)}`)
             .then(r => ({ vat, registered: r?.Registered ?? false, error: undefined as string | undefined }))
             .catch((e: unknown) => ({ vat, registered: false, error: e instanceof Error ? e.message : "lookup failed" }))
         )
@@ -213,7 +213,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       const peppolLookupErrors = new Map<string, string>();
       await batchAll(
         uniqueVats.map(vat => () =>
-          client.request<PeppolLookupResponse>("GET", `/v1/peppol/participantInformation/${vat}`)
+          client.request<PeppolLookupResponse>("GET", `/v1/peppol/participantInformation/${encodeURIComponent(vat)}`)
             .then(r => { peppolMap.set(vat, r?.Registered ?? false); })
             .catch((e: unknown) => { peppolMap.set(vat, false); peppolLookupErrors.set(vat, e instanceof Error ? e.message : "lookup failed"); })
         )
