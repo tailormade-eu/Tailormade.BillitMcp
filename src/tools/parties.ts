@@ -6,7 +6,7 @@ import { companyId, respond } from "./utils.js";
 export function registerPartyTools(server: McpServer, client: BillitClient) {
   server.tool(
     "billit_list_parties",
-    "List parties (customers and/or suppliers) in Billit. Returns array with PartyID, CommercialName, VATNumber, Email, PartyType. Supports OData $filter, $orderby, full-text search. Next steps: billit_get_party for full details, billit_create_order to create an invoice for a party.\n\nEXAMPLES:\n- filter=\"PartyType eq 'Customer'\"\n- filter=\"DisplayName eq 'Acme NV'\"\n- orderby='CommercialName asc'\n\nNOTE: fullTextSearch is a separate param — do NOT put it in OData $filter.",
+    "List parties (customers and/or suppliers) in Billit. Returns array with PartyID, CommercialName, VATNumber, Email, PartyType. Supports OData $filter, $orderby, full-text search. Next steps: billit_get_party for full details, billit_create_order to create an invoice for a party.\n\nEXAMPLES:\n- filter=\"PartyType eq 'Customer'\"\n- filter=\"DisplayName eq 'Acme NV'\"\n- orderby='CommercialName asc'\n\nNOTE: fullTextSearch is a separate param — do NOT put it in OData $filter. NOTE: PartyName/DisplayName may be empty in list responses — use billit_get_party to retrieve the full party name.",
     {
       party_type: z.enum(["Customer", "Supplier", "Both"]).optional().describe("Shortcut filter by party type. Equivalent to filter=\"PartyType eq '...'\"."),
       filter: z.string().optional().describe("OData $filter expression. Examples: \"DisplayName eq 'Acme NV'\", \"PartyType eq 'Customer'\". NOTE: If you also provide party_type, it will be merged with AND unless your filter already contains a PartyType condition."),
