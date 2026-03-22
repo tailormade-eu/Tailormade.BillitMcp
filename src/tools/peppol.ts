@@ -93,9 +93,16 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_peppol_unregister",
-    "Unregister the current Billit party from the Peppol network. After this, the party can no longer receive or send via Peppol. Use with caution.\n\nWARNING: Unregistering from Peppol is immediate and affects all incoming e-invoices. Confirm with the user before calling this.",
-    { company_id: companyId },
-    async ({ company_id }) => {
+    "Unregister the current Billit party from the Peppol network. After this, the party can no longer receive or send via Peppol. Use with caution.\n\nWARNING: Unregistering from Peppol is immediate and affects all incoming e-invoices. Confirm with the user before calling this.\n\nSupports dry_run=true to preview without making changes.",
+    {
+      company_id: companyId,
+      dry_run: z.union([z.boolean(), z.string().transform(v => v === "true")]).optional()
+        .describe("If true, returns what would happen without actually unregistering. Default: false."),
+    },
+    async ({ company_id, dry_run }) => {
+      if (dry_run) {
+        return respond("Dry run: would unregister party from Peppol. No changes made.");
+      }
       const data = await client.request("DELETE", "/v1/peppol/participants", undefined, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },

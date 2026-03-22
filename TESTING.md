@@ -25,8 +25,12 @@
 | 19 | Zod string coercion | Pass number as string | Coerced correctly | ⬜ |
 | 20 | create_order invalid lines JSON | Pass malformed JSON in `lines` param | Returns descriptive error with example, no crash | ⬜ |
 | 21 | delete_order dry_run | `dry_run=true` on billit_delete_order | Returns confirmation message, no API call | ⬜ |
+| 22 | OrderDate null-safe | Order with null OrderDate in workflow | No crash, date field is empty string | ⬜ |
+| 23 | Peppol batch concurrency | billit_check_peppol_coverage with many customers | Max 5 concurrent Peppol lookups per batch | ⬜ |
+| 24 | peppol_unregister dry_run | `dry_run=true` on billit_peppol_unregister | Returns preview message, no API call | ⬜ |
+| 25 | Dynamic since_date default | Call workflow without since_date | Uses current year start, not hardcoded 2026 | ⬜ |
 
-**Score: 0/21**
+**Score: 0/25**
 
 ---
 
