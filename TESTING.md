@@ -23,8 +23,10 @@
 | 17 | fullTextSearch | Separate from $filter | Returns search results | ⬜ |
 | 18 | Multi-company | Switch company_id param | Correct company context | ⬜ |
 | 19 | Zod string coercion | Pass number as string | Coerced correctly | ⬜ |
+| 20 | create_order invalid lines JSON | Pass malformed JSON in `lines` param | Returns descriptive error with example, no crash | ⬜ |
+| 21 | delete_order dry_run | `dry_run=true` on billit_delete_order | Returns confirmation message, no API call | ⬜ |
 
-**Score: 0/19**
+**Score: 0/21**
 
 ---
 

@@ -91,9 +91,17 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async (params) => {
-      const parsedLines = JSON.parse(params.lines) as Array<{
+      let parsedLines: Array<{
         description: string; quantity: number; unit_price_excl: number; vat_percentage: number; reference?: string;
       }>;
+      try {
+        parsedLines = JSON.parse(params.lines);
+      } catch {
+        return respond(
+          `Error: 'lines' is not valid JSON. Expected a JSON array of objects, e.g.:\n` +
+          `[{"description":"Service","quantity":1,"unit_price_excl":100,"vat_percentage":21}]`
+        );
+      }
       const body: Record<string, unknown> = {
         OrderType: params.order_type,
         OrderDirection: params.order_direction,
@@ -172,12 +180,16 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
 
   server.tool(
     "billit_delete_order",
-    "Delete an order. Use with caution — this is permanent. Typically only applicable for draft or rejected orders.",
+    "Delete an order permanently. Typically only applicable for draft or rejected orders. Supports dry_run=true to preview without deleting.",
     {
       order_id: z.coerce.number().describe("Numeric order ID to delete"),
+      dry_run: coerceBool.describe("When true, simulates the delete without making changes (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, company_id }) => {
+    async ({ order_id, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(`Dry run: would delete order ${order_id}. No changes made.`);
+      }
       await client.request("DELETE", `/v1/orders/${order_id}`, undefined, company_id);
       return respond(`Order ${order_id} deleted.`);
     },
