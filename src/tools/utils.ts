@@ -4,11 +4,11 @@ export function respond(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-/** Append an llmTip block to a tool description. Keeps description focused on
- *  What/When/Output/Next while surfacing gotchas, spec-gaps, and ERROR→CAUSE→FIX
- *  in a clearly separated section the LLM reads but users rarely see. */
+/** Append an LLM tip to a tool description, separated by a horizontal rule.
+ *  Keeps description focused on What/When/Output/Next while surfacing gotchas,
+ *  spec-gaps, and ERROR→CAUSE→FIX in a clearly separated section. */
 export function withLlmTip(description: string, tip: string): string {
-  return `${description}\n\n<llmTip>\n${tip}\n</llmTip>`;
+  return `${description}\n\n---\n${tip}`;
 }
 
 export const coerceBool = z.union([z.boolean(), z.string().transform(v => v === "true")]).optional();
