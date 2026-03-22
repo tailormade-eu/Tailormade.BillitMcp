@@ -46,12 +46,12 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
   // ── billit_list_financial_transactions ─────────────────────────────
   server.tool(
     "billit_list_financial_transactions",
-    "List financial transactions in Billit (bank transactions, payments). Use to reconcile payments with orders. Supports full-text search, OData $filter and $orderby.\n\nEXAMPLES:\n- Recent first: orderby='ValueDate desc'\n- Date range: filter=\"ValueDate ge datetime'2026-01-01T00:00:00' and ValueDate le datetime'2026-03-31T23:59:59'\"\n- By counterparty: filter=\"NameCounterParty eq 'Mehmet'\"\n- Combined: orderby='ValueDate desc', filter=\"ValueDate ge datetime'2026-01-01T00:00:00'\"\n\nNOTE: max page size is 120. Date filter requires datetime'' syntax.",
+    "List financial transactions in Billit (bank transactions, payments). Use to reconcile payments with orders. Supports full-text search, OData $filter and $orderby.\n\nEXAMPLES:\n- Recent first: orderby='ValueDate desc'\n- Date range: filter=\"ValueDate ge datetime'2026-01-01T00:00:00' and ValueDate le datetime'2026-03-31T23:59:59'\"\n- By counterparty: filter=\"NameCounterParty eq 'Acme Corp'\"\n- Combined: orderby='ValueDate desc', filter=\"ValueDate ge datetime'2026-01-01T00:00:00'\"\n\nNOTE: max page size is 120. Date filter requires datetime'' syntax.",
     {
       search: z.string().optional()
         .describe("Full-text search on transaction description, reference, or amount"),
       filter: z.string().optional()
-        .describe("OData $filter expression. Date syntax requires datetime'': \"ValueDate ge datetime'2026-01-01T00:00:00'\". Other examples: \"NameCounterParty eq 'Mehmet Eryilmaz'\", \"TotalAmount ge 500\""),
+        .describe("OData $filter expression. Date syntax requires datetime'': \"ValueDate ge datetime'2026-01-01T00:00:00'\". Other examples: \"NameCounterParty eq 'Acme Corp'\", \"TotalAmount ge 500\""),
       orderby: z.string().optional()
         .describe("OData $orderby expression. Examples: 'ValueDate desc', 'TotalAmount desc', 'ValueDate asc'"),
       top: z.coerce.number().optional()

@@ -133,7 +133,7 @@ To lock to one company, set `BILLIT_PARTY_ID` to the desired PartyID:
 ```json
 "env": {
   "BILLIT_API_KEY": "your-key",
-  "BILLIT_PARTY_ID": "208029"
+  "BILLIT_PARTY_ID": "your-party-id"
 }
 ```
 

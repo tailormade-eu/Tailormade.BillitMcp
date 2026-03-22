@@ -28,7 +28,7 @@ This server supports multiple Billit companies from a single API key.
 **Auto-discovery protocol:**
 1. Claude calls `billit_get_account_info` — no PartyID needed
 2. Returns all companies with `PartyID`, name, and VAT
-3. Claude stores mapping in memory: e.g. `JaRa Productions bv → 208029`
+3. Claude stores mapping in memory: e.g. `Acme Corp bv → 12345`
 4. All subsequent tool calls pass `company_id` based on context
 
 **Company IDs:** run `billit_get_account_info` to discover your own PartyIDs.
@@ -154,33 +154,33 @@ billit_list_reports company_id=<party-id> top=5
 
 ### R1 — JSON.parse error handling
 ```
-billit_create_order company_id=208029 order_type=Invoice order_direction=Income
+billit_create_order company_id=YOUR_ID order_type=Invoice order_direction=Income
   order_date=2026-03-22 customer_name="Test NV" lines="INVALID JSON {{broken"
 ```
 - [x] Returns clear error with JSON example — no crash
 
 ### R7 — billit_delete_order dry_run
 ```
-billit_delete_order company_id=208029 order_id=999999 dry_run=true
+billit_delete_order company_id=YOUR_ID order_id=999999 dry_run=true
 ```
 - [x] Returns "Dry run: would delete order 999999. No changes made."
 
 ### R8 — billit_peppol_unregister dry_run
 ```
-billit_peppol_unregister company_id=208029 dry_run=true
+billit_peppol_unregister company_id=YOUR_ID dry_run=true
 ```
 - [x] Returns "Dry run: would unregister party from Peppol. No changes made."
 
 ### R9 — OData filter wins over party_type
 ```
-billit_list_parties company_id=208029 party_type=Customer filter="PartyType eq 'Supplier'"
+billit_list_parties company_id=YOUR_ID party_type=Customer filter="PartyType eq 'Supplier'"
 ```
 - [x] Returns Suppliers only — filter takes precedence, no contradictory OData expression
 
 ### R13 — billit_get_report accepts string ID
 ```
-billit_list_reports company_id=208029 top=3  → report_id=1
-billit_get_report company_id=208029 report_id=1
+billit_list_reports company_id=YOUR_ID top=3  → report_id=1
+billit_get_report company_id=YOUR_ID report_id=1
 ```
 - [x] list_reports returns IDs — get_report works with numeric ID (z.coerce.number)
 
