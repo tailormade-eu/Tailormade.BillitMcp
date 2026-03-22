@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { coerceBool, companyId, respond, withLlmTip } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerPeppolTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -14,11 +14,7 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ orderby, top, skip, company_id }) => {
-      const params = new URLSearchParams();
-      if (orderby) params.set("$orderby", orderby);
-      if (top !== undefined) params.set("$top", String(top));
-      if (skip !== undefined) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ orderby, top, skip });
       const data = await client.request("GET", `/v1/peppol/inbox${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -71,9 +67,10 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
     "Check if a company is registered as a Peppol participant. Returns participant information including endpoint and supported document types. Use before billit_peppol_send_order to verify the customer is reachable.",
     {
       vat_or_cbe: z.string().describe("Company VAT number (e.g. BE0123456789) or CBE/KBO enterprise number to look up on Peppol"),
+      company_id: companyId,
     },
-    async ({ vat_or_cbe }) => {
-      const data = await client.request("GET", `/v1/peppol/participantInformation/${vat_or_cbe}`);
+    async ({ vat_or_cbe, company_id }) => {
+      const data = await client.request("GET", `/v1/peppol/participantInformation/${vat_or_cbe}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
   );

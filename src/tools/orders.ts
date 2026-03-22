@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { coerceBool, companyId, respond, withLlmTip } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerOrderTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -42,13 +42,7 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       }
       if (approval_status) filters.push(`ApprovalStatus eq '${approval_status}'`);
       if (paid !== undefined) filters.push(`Paid eq ${paid}`);
-      const params = new URLSearchParams();
-      if (filters.length) params.set("$filter", filters.join(" and "));
-      if (search) params.set("fullTextSearch", search);
-      if (orderby) params.set("$orderby", orderby);
-      if (top !== undefined) params.set("$top", String(top));
-      if (skip !== undefined) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter: filters.length ? filters.join(" and ") : undefined, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/orders${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -91,6 +85,7 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       payment_reference: z.string().optional().describe("Structured payment reference (e.g. +++084/2613/66074+++)"),
       currency: z.string().optional().describe("Currency code (default: EUR)"),
       lines: z.string().describe("JSON string array of order lines: [{\"description\": \"...\", \"quantity\": 1, \"unit_price_excl\": 100.0, \"vat_percentage\": 21}]"),
+      dry_run: coerceBool.describe("When true, validates input and returns what would be created without calling the API (default: false)"),
       company_id: companyId,
     },
     async (params) => {
@@ -133,6 +128,9 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
         ...(params.payment_reference && { PaymentReference: params.payment_reference }),
         ...(params.currency && { Currency: params.currency }),
       };
+      if (params.dry_run) {
+        return respond(`Dry run: would create ${params.order_type} (${params.order_direction}) for ${params.customer_name}. No changes made.`);
+      }
       const data = await client.request("POST", "/v1/orders", body, params.company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -154,9 +152,10 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       account_code: z.string().optional().describe("Accounting code for bookkeeping export"),
       invoiced: coerceBool.describe("Mark as invoiced (for offers)"),
       exported_to_connector: coerceBool.describe("Mark as exported to external accounting connector"),
+      dry_run: coerceBool.describe("When true, returns what would be updated without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, paid, paid_date, is_sent, approval_status, internal_info, account_code, invoiced, exported_to_connector, company_id }) => {
+    async ({ order_id, paid, paid_date, is_sent, approval_status, internal_info, account_code, invoiced, exported_to_connector, dry_run, company_id }) => {
       const body: Record<string, unknown> = {};
       if (paid !== undefined) body.Paid = paid;
       if (paid_date !== undefined) body.PaidDate = paid_date;
@@ -166,6 +165,9 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       if (account_code !== undefined) body.AccountCode = account_code;
       if (invoiced !== undefined) body.Invoiced = invoiced;
       if (exported_to_connector !== undefined) body.ExportedToConnector = exported_to_connector;
+      if (dry_run) {
+        return respond(`Dry run: would update order ${order_id} with ${JSON.stringify(body)}. No changes made.`);
+      }
       const data = await client.request("PATCH", `/v1/orders/${order_id}`, body, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -176,9 +178,13 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
     "Shortcut to approve an order for Billit processing. Sets ApprovalStatus to 'approved'. Required before Billit will process/send the invoice. Equivalent to billit_update_order with approval_status='approved'.",
     {
       order_id: z.coerce.number().describe("Numeric order ID to approve"),
+      dry_run: coerceBool.describe("When true, returns what would happen without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, company_id }) => {
+    async ({ order_id, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(`Dry run: would confirm (approve) order ${order_id}. No changes made.`);
+      }
       const data = await client.request("PATCH", `/v1/orders/${order_id}`, { ApprovalStatus: "approved" }, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -209,11 +215,15 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
       amount: z.coerce.number().describe("Payment amount as decimal (e.g. 121.00)"),
       payment_date: z.string().describe("Date payment was received (YYYY-MM-DD)"),
       payment_reference: z.string().optional().describe("Payment reference or bank transaction ID"),
+      dry_run: coerceBool.describe("When true, returns what would be registered without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, amount, payment_date, payment_reference, company_id }) => {
+    async ({ order_id, amount, payment_date, payment_reference, dry_run, company_id }) => {
       const body: Record<string, unknown> = { Amount: amount, PaymentDate: payment_date };
       if (payment_reference) body.PaymentReference = payment_reference;
+      if (dry_run) {
+        return respond(`Dry run: would register payment of ${amount} on order ${order_id} for ${payment_date}. No changes made.`);
+      }
       const data = await client.request("POST", `/v1/orders/${order_id}/payments`, body, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -227,9 +237,13 @@ export function registerOrderTools(server: McpServer, client: BillitClient) {
     ),
     {
       order_ids: z.array(z.number()).describe("Array of numeric order IDs to send (can send multiple at once)"),
+      dry_run: coerceBool.describe("When true, returns what would be sent without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ order_ids, company_id }) => {
+    async ({ order_ids, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(`Dry run: would send order(s) ${order_ids.join(", ")}. No changes made.`);
+      }
       const data = await client.request("POST", "/v1/orders/commands/send", { OrderIDs: order_ids }, company_id);
       return respond(JSON.stringify(data ?? { sent: order_ids }, null, 2));
     },

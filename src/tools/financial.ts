@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond, withLlmTip } from "./utils.js";
+import { buildODataParams, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerFinancialTools(server: McpServer, client: BillitClient) {
   // ── billit_get_account_info ───────────────────────────────────────
@@ -64,13 +64,7 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
       company_id: companyId,
     },
     async ({ search, filter, orderby, top, skip, company_id }) => {
-      const params = new URLSearchParams();
-      if (search) params.set("fullTextSearch", search);
-      if (filter) params.set("$filter", filter);
-      if (orderby) params.set("$orderby", orderby);
-      if (top !== undefined) params.set("$top", String(top));
-      if (skip !== undefined) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/financialTransactions${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -113,11 +107,7 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
       company_id: companyId,
     },
     async ({ orderby, top, skip, company_id }) => {
-      const params = new URLSearchParams();
-      if (orderby) params.set("$orderby", orderby);
-      if (top !== undefined) params.set("$top", String(top));
-      if (skip !== undefined) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ orderby, top, skip });
       const data = await client.request("GET", `/v1/reports${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },

@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond, withLlmTip } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerPartyTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -21,17 +21,11 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
     },
     async ({ party_type, filter, orderby, search, top, skip, company_id }) => {
       const filters: string[] = [];
-      if (party_type && !(filter && /PartyType/i.test(filter))) {
+      if (party_type && !(filter && /PartyType\s+eq\b/i.test(filter))) {
         filters.push(`PartyType eq '${party_type}'`);
       }
       if (filter) filters.push(filter);
-      const params = new URLSearchParams();
-      if (filters.length) params.set("$filter", filters.join(" and "));
-      if (orderby) params.set("$orderby", orderby);
-      if (search) params.set("fullTextSearch", search);
-      if (top !== undefined) params.set("$top", String(top));
-      if (skip !== undefined) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter: filters.length ? filters.join(" and ") : undefined, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/parties${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -73,6 +67,7 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
       city: z.string().optional().describe("City name"),
       country_code: z.string().optional().describe("ISO country code (default: BE)"),
       address_type: z.enum(["InvoiceAddress", "DeliveryAddress"]).optional().describe("Address type: 'InvoiceAddress' (default) or 'DeliveryAddress'"),
+      dry_run: coerceBool.describe("When true, validates input and returns what would be created without calling the API (default: false)"),
       company_id: companyId,
     },
     async (params) => {
@@ -98,6 +93,9 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
           CountryCode: params.country_code ?? "BE",
         }];
       }
+      if (params.dry_run) {
+        return respond(`Dry run: would create party '${params.commercial_name}' (${params.party_type ?? "Customer"}). No changes made.`);
+      }
       const data = await client.request("POST", "/v1/parties", body, params.company_id);
       return respond(JSON.stringify(data, null, 2));
     },
@@ -115,9 +113,10 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
       language: z.enum(["NL", "FR", "EN", "DE"]).optional().describe("Updated language: NL, FR, EN, or DE"),
       iban: z.string().optional().describe("Updated IBAN"),
       bic: z.string().optional().describe("Updated BIC/SWIFT"),
+      dry_run: coerceBool.describe("When true, returns what would be updated without calling the API (default: false)"),
       company_id: companyId,
     },
-    async ({ party_id, commercial_name, vat_number, email, phone, language, iban, bic, company_id }) => {
+    async ({ party_id, commercial_name, vat_number, email, phone, language, iban, bic, dry_run, company_id }) => {
       const body: Record<string, unknown> = {};
       if (commercial_name !== undefined) body.CommercialName = commercial_name;
       if (vat_number !== undefined) body.VATNumber = vat_number;
@@ -126,6 +125,9 @@ export function registerPartyTools(server: McpServer, client: BillitClient) {
       if (language !== undefined) body.Language = language;
       if (iban !== undefined) body.IBAN = iban;
       if (bic !== undefined) body.BIC = bic;
+      if (dry_run) {
+        return respond(`Dry run: would update party ${party_id} with ${JSON.stringify(body)}. No changes made.`);
+      }
       const data = await client.request("PATCH", `/v1/parties/${party_id}`, body, company_id);
       return respond(JSON.stringify(data, null, 2));
     },

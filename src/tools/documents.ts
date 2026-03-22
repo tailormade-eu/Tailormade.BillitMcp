@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { companyId, respond, withLlmTip } from "./utils.js";
+import { buildODataParams, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerDocumentTools(server: McpServer, client: BillitClient) {
   server.tool(
@@ -16,13 +16,7 @@ export function registerDocumentTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ filter, orderby, search, top, skip, company_id }) => {
-      const params = new URLSearchParams();
-      if (filter) params.set("$filter", filter);
-      if (orderby) params.set("$orderby", orderby);
-      if (search) params.set("fullTextSearch", search);
-      if (top !== undefined) params.set("$top", String(top));
-      if (skip !== undefined) params.set("$skip", String(skip));
-      const qs = params.toString();
+      const qs = buildODataParams({ filter, search, orderby, top, skip });
       const data = await client.request("GET", `/v1/documents${qs ? `?${qs}` : ""}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
