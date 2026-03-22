@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BillitClient } from "../api/client.js";
-import { buildODataParams, companyId, respond, withLlmTip } from "./utils.js";
+import { buildODataParams, coerceBool, companyId, respond, withLlmTip } from "./utils.js";
 
 export function registerFinancialTools(server: McpServer, client: BillitClient) {
   // ── billit_get_account_info ───────────────────────────────────────
@@ -84,9 +84,13 @@ export function registerFinancialTools(server: McpServer, client: BillitClient) 
         .describe("File name (e.g. 'statement-2026-01.coda' or 'statement.mt940')"),
       content_type: z.string().optional()
         .describe("MIME type of the file (e.g. 'application/octet-stream'). Auto-detected from file_name if omitted."),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ file_base64, file_name, content_type, company_id }) => {
+    async ({ file_base64, file_name, content_type, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Import financial transactions from '${file_name}'` }, null, 2));
+      }
       const body = { FileBase64: file_base64, FileName: file_name, ContentType: content_type };
       const data = await client.request("POST", "/v1/financialTransactions/commands/import", body, company_id);
       return respond(JSON.stringify(data, null, 2));

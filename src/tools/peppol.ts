@@ -54,9 +54,13 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
     ),
     {
       order_id: z.coerce.number().describe("Numeric order ID to send via Peppol"),
+      dry_run: coerceBool.describe("When true, preview the action without executing it (default: false)"),
       company_id: companyId,
     },
-    async ({ order_id, company_id }) => {
+    async ({ order_id, dry_run, company_id }) => {
+      if (dry_run) {
+        return respond(JSON.stringify({ dry_run: true, would: `Send order ${order_id} via Peppol` }, null, 2));
+      }
       const data = await client.request("POST", "/v1/peppol/sendOrder", { OrderID: order_id }, company_id);
       return respond(JSON.stringify(data ?? { success: true }, null, 2));
     },
