@@ -3,6 +3,13 @@
 ## [1.1.1] - 2026-03-22
 
 ### Fixed
+- `NOTE:` blocks still in description for 3 tools — moved to `withLlmTip()` (Task 14, CR10)
+- Silent catch on full-order-fetch in `billit_peppol_send_report` — now surfaces errors with `fetch_failed` bucket (Task 15, CR11)
+- `withLlmTip()` used XML `<llmTip>` tags — replaced with plain `---` separator (Task 16, CR12)
+- Missing `unhandledRejection` handler — server died silently on async errors (Task 17, W1)
+- OData `modified_after` injection — added ISO 8601 regex validation (Task 17, W2)
+- Workflow pagination infinite loop risk — added MAX_PAGES=100 safeguard (Task 17, W3)
+- `client.ts` falsy check on `partyId`/`contextPartyId` inconsistent with `!== undefined` fix (Task 17, CR13)
 - Crash on invalid JSON in `billit_create_order` lines parameter (R1)
 - TypeError when API returns null OrderDate in workflows (R2)
 - Unbounded concurrency in Peppol lookups — now capped at 5 concurrent (R3)
@@ -19,13 +26,17 @@
 - `since_date` describe() text hardcoded "2026-01-01" — now says "start of current year" (Task 13)
 
 ### Added
-- `dry_run` parameter on `billit_delete_order` and `billit_peppol_unregister` (R7, R8)
+- `dry_run` parameter on 10 write tools: delete_order, peppol_unregister, create/update/confirm/send_order, register_payment, create/update_party, create_product (R7, R8, Task 18, W5)
+- `company_id` param on `billit_peppol_lookup_participant` — consistent with all other peppol tools (Task 18, S6)
+- `buildODataParams()` helper in utils.ts — replaces inline URLSearchParams in 7 list-tools (Task 18, S5)
 - Bidirectional llmTip sync between code and GUIDELINES-BILLIT.md (R11)
-- `withLlmTip()` helper — `<llmTip>` XML tags appended to tool descriptions for API quirks (Task 09)
+- `withLlmTip()` helper — plain `---` separator appended to tool descriptions for API quirks (Task 09, Task 16)
 - 14 WARNING/NOTE/CRITICAL blocks migrated from description text to llmTip in 6 tool files (Task 09)
 
 ### Changed
-- Extracted shared `companyId` schema, `respond()` helper, and `coerceBool` to `src/tools/utils.ts` (R14, Task 13)
+- Extracted shared `companyId` schema, `respond()` helper, `coerceBool`, `buildODataParams()`, and `currentYearStart()` to `src/tools/utils.ts` (R14, Task 13, Task 18)
+- `check-coverage` script now also validates `coerceBool` params have `.describe()` and skips `companyId` (has built-in describe) (Task 18, S1)
+- PartyType regex tightened from `/PartyType/i` to `/PartyType\s+eq\b/i` to prevent false positives (Task 18, S3)
 
 ---
 
