@@ -74,7 +74,7 @@ export function registerPeppolTools(server: McpServer, client: BillitClient) {
       company_id: companyId,
     },
     async ({ vat_or_cbe, company_id }) => {
-      const data = await client.request("GET", `/v1/peppol/participantInformation/${vat_or_cbe}`, undefined, company_id);
+      const data = await client.request("GET", `/v1/peppol/participantInformation/${encodeURIComponent(vat_or_cbe)}`, undefined, company_id);
       return respond(JSON.stringify(data, null, 2));
     },
   );

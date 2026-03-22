@@ -25,7 +25,7 @@ export function buildODataParams(opts: {
   skip?: number;
 }): string {
   const params = new URLSearchParams();
-  if (opts.filter) params.set("$filter", opts.filter);
+  if (opts.filter?.trim()) params.set("$filter", opts.filter);
   if (opts.search) params.set("fullTextSearch", opts.search);
   if (opts.orderby) params.set("$orderby", opts.orderby);
   if (opts.top !== undefined) params.set("$top", String(opts.top));
