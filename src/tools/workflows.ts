@@ -221,7 +221,7 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
       }
 
       // 5. Fetch full orders for Peppol-eligible (batches of 5) to check send status
-      type SendStatus = { order: Order; sent: boolean; deliveryStatus?: string };
+      type SendStatus = { order: Order; sent: boolean; deliveryStatus?: string; fetchError?: string };
       const fullOrderResults = await batchAll(
         peppolEligible.map(order => () =>
           client.request<FullOrder>("GET", `/v1/orders/${order.OrderID}`, undefined, company_id)
@@ -235,16 +235,17 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
               const deliveryStatus = full?.CurrentDocumentDeliveryDetails?.DocumentDeliveryStatus;
               return { order, sent, deliveryStatus } as SendStatus;
             })
-            .catch(() => ({ order, sent: false } as SendStatus))
+            .catch((e: unknown) => ({ order, sent: false, fetchError: e instanceof Error ? e.message : "fetch failed" } as SendStatus))
         )
       );
 
-      // 6. Split sent vs not sent
-      type InvoiceInfo = { id: number; number: string; date: string; amount: number; vat: string; customer: string; deliveryStatus?: string };
+      // 6. Split sent vs not sent vs fetch failed
+      type InvoiceInfo = { id: number; number: string; date: string; amount: number; vat: string; customer: string; deliveryStatus?: string; error?: string };
       const sentViaPeppol: InvoiceInfo[] = [];
       const onPeppolNotSent: InvoiceInfo[] = [];
+      const fetchFailedOrders: InvoiceInfo[] = [];
 
-      for (const { order, sent, deliveryStatus } of fullOrderResults) {
+      for (const { order, sent, deliveryStatus, fetchError } of fullOrderResults) {
         const info: InvoiceInfo = {
           id: order.OrderID,
           number: order.OrderNumber,
@@ -254,7 +255,8 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
           customer: order.CounterParty.DisplayName,
           deliveryStatus,
         };
-        if (sent) sentViaPeppol.push(info);
+        if (fetchError) fetchFailedOrders.push({ ...info, error: fetchError });
+        else if (sent) sentViaPeppol.push(info);
         else onPeppolNotSent.push(info);
       }
 
@@ -283,11 +285,13 @@ export function registerWorkflowTools(server: McpServer, client: BillitClient) {
           on_peppol_not_sent: onPeppolNotSent.length,
           not_on_peppol: notOnPeppol.length,
           lookup_failed: lookupFailed.length,
+          fetch_failed: fetchFailedOrders.length,
         },
         sent_via_peppol: sentViaPeppol,
         on_peppol_not_sent: onPeppolNotSent,
         not_on_peppol: notOnPeppol,
         ...(lookupFailed.length > 0 ? { lookup_failed: lookupFailed } : {}),
+        ...(fetchFailedOrders.length > 0 ? { fetch_failed: fetchFailedOrders } : {}),
       };
 
       return respond(JSON.stringify(result, null, 2));
