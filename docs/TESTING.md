@@ -150,6 +150,42 @@ billit_list_reports company_id=<party-id> top=5
 
 ---
 
+## v1.1.1 Regression Tests (2026-03-22)
+
+### R1 — JSON.parse error handling
+```
+billit_create_order company_id=208029 order_type=Invoice order_direction=Income
+  order_date=2026-03-22 customer_name="Test NV" lines="INVALID JSON {{broken"
+```
+- [x] Returns clear error with JSON example — no crash
+
+### R7 — billit_delete_order dry_run
+```
+billit_delete_order company_id=208029 order_id=999999 dry_run=true
+```
+- [x] Returns "Dry run: would delete order 999999. No changes made."
+
+### R8 — billit_peppol_unregister dry_run
+```
+billit_peppol_unregister company_id=208029 dry_run=true
+```
+- [x] Returns "Dry run: would unregister party from Peppol. No changes made."
+
+### R9 — OData filter wins over party_type
+```
+billit_list_parties company_id=208029 party_type=Customer filter="PartyType eq 'Supplier'"
+```
+- [x] Returns Suppliers only — filter takes precedence, no contradictory OData expression
+
+### R13 — billit_get_report accepts string ID
+```
+billit_list_reports company_id=208029 top=3  → report_id=1
+billit_get_report company_id=208029 report_id=1
+```
+- [x] list_reports returns IDs — get_report works with numeric ID (z.coerce.number)
+
+---
+
 ## Coverage Check
 
 ```bash
